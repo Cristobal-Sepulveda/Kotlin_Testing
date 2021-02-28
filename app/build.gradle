@@ -28,6 +28,13 @@ android {
     buildFeatures {
         dataBinding true
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
 }
 
 dependencies {
@@ -55,9 +62,9 @@ dependencies {
     implementation "androidx.navigation:navigation-fragment-ktx:$navigationVersion"
     implementation "androidx.navigation:navigation-ui-ktx:$navigationVersion"
 
+    //TODO 1.1
     // Dependencies for local unit tests
     testImplementation "junit:junit:$junitVersion"
-
     // AndroidX Test - Instrumented testing
     androidTestImplementation "androidx.test.ext:junit:$androidXTestExtKotlinRunnerVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$espressoVersion"
