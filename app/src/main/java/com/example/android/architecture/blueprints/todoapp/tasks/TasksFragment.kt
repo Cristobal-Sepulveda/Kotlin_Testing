@@ -22,10 +22,13 @@ import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
+import android.view.View.GONE
+import android.view.View.VISIBLE
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Observer
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.example.android.architecture.blueprints.todoapp.EventObserver
@@ -58,9 +61,16 @@ class TasksFragment : Fragment() {
         viewDataBinding = TasksFragBinding.inflate(inflater, container, false).apply {
             viewmodel = viewModel
         }
+        viewModel.tasksAddViewVisible.observe(viewLifecycleOwner, Observer{
+            when (it){
+                true -> viewDataBinding.addTaskFab.show()
+                false -> viewDataBinding.addTaskFab.hide()
+            }
+        })
         setHasOptionsMenu(true)
         return viewDataBinding.root
     }
+
 
     override fun onOptionsItemSelected(item: MenuItem) =
         when (item.itemId) {
@@ -96,10 +106,10 @@ class TasksFragment : Fragment() {
     }
 
     private fun setupNavigation() {
-        viewModel.openTaskEvent.observe(this, EventObserver {
+        viewModel.openTaskEvent.observe(viewLifecycleOwner, EventObserver {
             openTaskDetails(it)
         })
-        viewModel.newTaskEvent.observe(this, EventObserver {
+        viewModel.newTaskEvent.observe(viewLifecycleOwner, EventObserver {
             navigateToAddNewTask()
         })
     }

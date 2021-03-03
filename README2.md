@@ -831,7 +831,7 @@ In this step, you'll finish your addNewTask_setsNewTaskEvent() test.
     2. Open TasksViewModelTest.kt.
 
     3. Add the InstantTaskExecutorRule inside the TasksViewModelTest class:
-
+`TODO 2.11`
   TasksViewModelTest.kt
             class TasksViewModelTest {
                 @get:Rule
@@ -849,7 +849,7 @@ In this step, you'll finish your addNewTask_setsNewTaskEvent() test.
     1. Make a new Kotlin file called LiveDataTestUtil.kt in your test source set:
 
 https://video.udacity-data.com/topher/2019/October/5da0c6d3_5.livedatatestingbasics/5.livedatatestingbasics.png
-
+`TODO 2.12`
     2. Copy and paste this code there:
 
 LiveDataTestUtil.kt
@@ -893,7 +893,7 @@ LiveDataTestUtil.kt
                   return data as T
               }
   For a full explanation of what this class, check out this blog post.
-
+https://medium.com/androiddevelopers/unit-testing-livedata-and-other-common-observability-problems-bb477262eb04
   As you write your own tests that test LiveData, you can similarly copy
   and use this class in your code.
 
@@ -910,6 +910,7 @@ TasksViewModelTest.kt
 
               val value = tasksViewModel.newTaskEvent.getOrAwaitValue()
 
+`TODO 2.13`
     3. Assert that the value is not null:
 
   TasksViewModelTest.kt
