@@ -948,7 +948,7 @@ Now that you've seen how to write a test, write one on your own!
 
 Step 1: Write your own ViewModel test
 
-  You'll writegetTasksAddViewVisible(). This test should check that
+  You'll write getTasksAddViewVisible(). This test should check that
   if you've set your filter type to show all tasks, that the Add task
   button is visible.
 
@@ -990,7 +990,7 @@ the code is now here.
 https://github.com/udacity/android-testing/tree/end_codelab_1
 
   Step 1: Compare your test to the solution
-
+`TODO 2.14`
     1. Compare your solution versus the solution below:
 
     TasksViewModelTest
@@ -1017,6 +1017,7 @@ Notice:
     * You check that the tasksAddViewVisible is true, using the
       getOrAwaitNextValue method
 
+`TODO 2.15`
   Step 2: Add a @Before rule
 
   Notice how at the start of both of your tests, you define a TasksViewModel:
