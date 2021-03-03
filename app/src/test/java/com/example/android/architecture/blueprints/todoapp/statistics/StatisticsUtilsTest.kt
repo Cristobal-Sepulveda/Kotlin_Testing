@@ -3,6 +3,8 @@ package com.example.android.architecture.blueprints.todoapp.statistics
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import junit.framework.Assert.assertEquals
 import junit.framework.TestCase
+import org.hamcrest.CoreMatchers.`is`
+import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
 
 //TODO 1.5
@@ -24,10 +26,13 @@ class StatisticsUtilsTest{
         // Call our function
         val result = getActiveAndCompletedStats(tasks)
 
-        //TODO 1.9
+/*        //TODO 1.9
         // Check the result
         assertEquals(result.completedTasksPercent, 0f)
-        assertEquals(result.activeTasksPercent, 100f)
+        assertEquals(result.activeTasksPercent, 100f)*/
+        //TODO 2.4
+        assertThat(result.completedTasksPercent, `is`(0f))
+        assertThat(result.activeTasksPercent, `is`(100f))
     }
 
     // Is there's 2 completed task and 3 active tasks,
@@ -50,6 +55,24 @@ class StatisticsUtilsTest{
 
         assertEquals(40f, result.completedTasksPercent)
         assertEquals(60f, result.activeTasksPercent)
+    }
+
+    //TODO 2.1
+    @Test
+    fun getActiveAndCompletedStats_empty_returnsZeros() {
+        val tasks = emptyList<Task>()
+        val result = getActiveAndCompletedStats(tasks)
+        assertEquals(0f, result.completedTasksPercent)
+        assertEquals(0f, result.activeTasksPercent)
+    }
+
+    //TODO 2.2
+    @Test
+    fun getActiveAndCompletedStats_error_returnsZeros() {
+        val tasks = null
+        val result = getActiveAndCompletedStats(tasks)
+        assertEquals(0f, result.completedTasksPercent)
+        assertEquals(0f, result.activeTasksPercent)
     }
 }
 
