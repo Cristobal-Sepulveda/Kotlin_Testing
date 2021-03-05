@@ -1,3 +1,7 @@
+
+
+                          CODELAB: PART 1
+                          TESTING: BASICS
 ________________________________________________________________________________
 
                             1. Looking Forward
@@ -1105,5 +1109,757 @@ Warning
                 }
 
             }
+
+________________________________________________________________________________
+
+
+
+
+
+
+
+________________________________________________________________________________
+                          CODELAB: PART 2
+          TESTING: Intro to Test Doubles & Dependency Injection
+________________________________________________________________________________
+
+                          1. Test Doubles
+________________________________________________________________________________
+
+Test Doubles
+
+  Fake
+        A test double that has a "working" implementation of the class, but it's implemented in a way that makes it good for tests but unsuitable
+      for production
+
+  Mock
+	      A test double that tracks which of its methods were called. It then
+        passes or fails a test depending on whether it's methods were called     correctly.
+
+  Stub
+	      A test double that includes no logic and only returns what you
+        program it to return. A StubTaskRepository could be programmed
+        to return certain combinations of tasks from getTasks for example.
+
+  Dummy
+        A test double that is passed around but not used, such as if you just need to provide it as a parameter. If you had a DummyTaskRepository, it would just implement the TaskRepository with no code in any of the methods.
+
+  Spy
+        A test double which also keeps tracks of some additional
+        information; for example, if you made a SpyTaskRepository,
+        it might keep track of the number of times the addTask
+        method was called.
+
+For more information on test doubles, check out this article.
+https://testing.googleblog.com/2013/07/testing-on-toilet-know-your-test-doubles.html
+
+The documentation has some great tips about using test doubles in Android.
+https://developer.android.com/training/testing/fundamentals#test-doubles
+________________________________________________________________________________
+
+              2. Code Checkpoint: Make a FakeDataSource
+________________________________________________________________________________
+
+  In this step, you're going to create a FakeDataSource test double.
+  This will be so that we can properly unit test DefaultTasksRepository.
+
+Optional Step: Download the Code (Code Checkpoint)
+
+  If you haven't been following along or want to download the code up to
+  this point, you can do so now. Download the code here, download a zip
+  of the code here, OR you can clone the Github repository for the code:
+
+          $ git clone https://github.com/udacity/android-testing.git
+          $ cd android-architecture
+          $ git checkout end_codelab_1
+
+Step 1: Create the FakeDataSource Class
+
+  In this step you are going to create a class FakeDataSouce, which will
+  be a test double of a LocalDataSource and RemoteDataSource.
+
+    1. In the test source set, right click select New -> Package.
+
+    2. Make a data package with a source package inside.
+
+    3. Create a new class called FakeDataSource in the data/source package:
+
+https://video.udacity-data.com/topher/2019/October/5da0c6d3_9.makeafakedatasource1/9.makeafakedatasource1.png
+
+`TODO 3.1`
+Step 2: Implement DataSource interface
+
+    1. Make a FakeDataSource class that implements TasksDataSource:
+
+FakeDataSource.kt
+              class FakeDataSource : TasksDataSource {
+
+              }
+
+  Android Studio will complain that you haven't implemented required method for TasksDataSource.
+
+    2. Use the Quick-fix menu and select Implement members.
+
+https://video.udacity-data.com/topher/2019/October/5da0c6d3_9.makeafakedatasource2/9.makeafakedatasource2.png
+
+    3. Select all of the methods and press OK:
+
+https://video.udacity-data.com/topher/2019/October/5da0c6d4_9.makeafakedatasource3/9.makeafakedatasource3.png
+
+Step 3: Implement the getTasks method in FakeDataSource
+
+  Start by writing fake version of these methods:
+
+`TODO 3.2`
+    * Write getTasks: If tasks isn't null, you should return a
+      Success result. If tasks is null, then you should return an Error result.
+
+`TODO 3.3`
+    * Write deleteAllTasks: clear the mutable tasks list.
+
+`TODO 3.4`
+    * Write saveTask: add the task to the list.
+
+  Here's the final code for these methods:
+
+  FakeDataSource.kt
+              override suspend fun getTasks(): Result<List<Task>> {
+                  tasks?.let { return Success(ArrayList(it)) }
+                  return Error(
+                      Exception("Tasks not found")
+                  )
+              }
+
+
+              override suspend fun deleteAllTasks() {
+                  tasks?.clear()
+              }
+
+              override suspend fun saveTask(task: Task) {
+                  tasks?.add(task)
+              }
+
+  This is similar to how the actual local and remote data sources work. You'll implement the rest of this class later, but let's write a test!
+
+________________________________________________________________________________
+
+                          3. Dependency Injection (DI)
+________________________________________________________________________________
+
+Reference Documentation
+Dagger 2 Codelab
+https://developer.android.com/codelabs/android-dagger
+Dependency Injection Documentation
+https://developer.android.com/training/dependency-injection
+
+________________________________________________________________________________
+
+          4. Test Repository with Constructor Dependency Injection and DI
+________________________________________________________________________________
+
+
+  In this step you'll implement Constructor Dependency Injection.
+  Constructor dependency injection allows you to swap in the test
+  double by passing it into the constructor.
+
+Step 1: Use Constructor Dependency Injection in DefaultTasksRepository
+
+`TODO 3.5`
+    1. Change the DefaultTaskRepository's constructor from taking in an
+       Application to taking in both data sources and the coroutine dispatcher :
+
+  DefaultTasksRepository.kt
+              // REPLACE
+              class DefaultTasksRepository private constructor(
+                application: Application) { // Rest of class }
+              // WITH
+              class DefaultTasksRepository(
+                  private val tasksRemoteDataSource: TasksDataSource,
+                  private val tasksLocalDataSource: TasksDataSource,
+                  private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) { // Rest of class }
+`TODO 3.6`
+    2. Because we passed the dependencies in, remove the init method. You no longer need to create the dependencies.
+
+    3. Also delete the old instance variables. You're defining
+       them in the constructor:
+
+  DefaultTasksRepository.kt
+              // Delete these old variables
+              private val tasksRemoteDataSource: TasksDataSource
+              private val tasksLocalDataSource: TasksDataSource
+              private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+`TODO 3.7`
+    4. Finally, update the getRepository method to use the new constructor:
+
+  DefaultTasksRepository.kt
+              companion object {
+                  @Volatile
+                  private var INSTANCE: DefaultTasksRepository? = null
+
+                  fun getRepository(app: Application): DefaultTasksRepository {
+                      return INSTANCE ?: synchronized(this) {
+                          val database = Room.databaseBuilder(app,
+                              ToDoDatabase::class.java, "Tasks.db")
+                              .build()
+                          DefaultTasksRepository(TasksRemoteDataSource, TasksLocalDataSource(database.taskDao())).also {
+                              INSTANCE = it
+                          }
+                      }
+                  }
+              }
+
+    You are now using constructor dependency injection!
+
+Step 2: Use your FakeDataSource in your tests
+
+  Now that your code is using constructor dependency injection, you can
+  use your fake data source to test your DefaultTasksRepository.
+
+`TODO 3.8`
+    1. Right click on the DefaultTasksRepository class name and select
+       Generate then Test.
+
+    2. Follow the prompts to create DefaultTasksRepositoryTest in the
+       test source set.
+
+`TODO 3.9`
+    3. At the top of your new DefaultTasksRepositoryTest class, add these
+       member variables to represent the data in your fake data sources:
+
+            DefaultTasksRepositoryTest.kt
+                private val task1 = Task("Title1", "Description1")
+                private val task2 = Task("Title2", "Description2")
+                private val task3 = Task("Title3", "Description3")
+                private val remoteTasks = listOf(task1, task2).sortedBy { it.id }
+                private val localTasks = listOf(task3).sortedBy { it.id }
+                private val newTasks = listOf(task3).sortedBy { it.id }
+`TODO 3.10`
+    4. Also create three variables - two FakeDataSource member
+       variables (one for each data source for your repository) and a
+       variable for the DefaultTasksRepository which you will test:
+
+            DefaultTasksRepositoryTest.kt
+
+                private lateinit var tasksRemoteDataSource: FakeDataSource
+                private lateinit var tasksLocalDataSource: FakeDataSource
+
+                // Class under test
+                private lateinit var tasksRepository: DefaultTasksRepository
+
+  Now you'll make a method to setup and initialize a testable
+  DefaultTasksRepository. This DefaultTasksRepository will use
+  your test double FakeDataSources.
+
+    5. Create a method called createRepository and annotate it with @Before.
+
+    6. Instantiate your fake data sources, using the remoteTasks and localTasks lists.
+
+    7. Instantiate your tasksRepository, using the two fake data sources you just created and Dispatchers.Unconfined.
+
+  The final method should look like this:
+`TODO 3.11`
+      DefaultTasksRepositoryTest.kt
+                @Before
+                fun createRepository() {
+                    tasksRemoteDataSource = FakeDataSource(remoteTasks.toMutableList())
+                    tasksLocalDataSource = FakeDataSource(localTasks.toMutableList())
+                    // Get a reference to the class under test
+                    tasksRepository = DefaultTasksRepository(
+                        // TODO Dispatchers.Unconfined should be replaced with Dispatchers.Main
+                        //  this requires understanding more about coroutines + testing
+                        //  so we will keep this as Unconfined for now.
+                        tasksRemoteDataSource, tasksLocalDataSource, Dispatchers.Unconfined
+                    )
+                }
+Step 3: Write DefaultTasksRepository's getTasks() Test
+
+  Time to write a DefaultTasksRepository test!
+`TODO 3.12`
+    1. Write a test for the repository's getTasks method. Check that when
+       you call get tasks with true (meaning that it should reload from
+       the remote data source) that it returns data from the remote data
+       source (as opposed to the local data source):
+
+        DefaultTasksRepositoryTest.kt
+              @Test
+                  fun getTasks_requestsAllTasksFromRemoteDataSource(){
+                      // When tasks are requested from the tasks repository
+                      val tasks = tasksRepository.getTasks(true) as Success
+
+                      // Then tasks are loaded from the remote data source
+                      assertThat(tasks.data, IsEqual(remoteTasks))
+                  }
+  You will get an error when you call getTasks:
+
+https://video.udacity-data.com/topher/2019/October/5da0c6d5_11.testrepowconstructordi/11.testrepowconstructordi.png
+
+Step 4: Add runBlockingTest
+`TODO 3.13`
+    1. Add the required dependencies for testing coroutines to the test
+       source set by using testImplementation:
+
+          app/build.gradle
+                  testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion"
+
+  Don't forget to sync!
+
+  You should use runBlockingTest in your test classes when you're calling
+  a suspend function.
+
+    2. Add the @ExperimentalCoroutinesApi above the class.
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-experimental-coroutines-api/
+
+    3. Back in your DefaultTasksRepositoryTest add runBlockingTest so
+       that it takes in your entire test as a "block" of code
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-test/kotlinx.coroutines.test/run-blocking-test.html
+
+  This final test looks like:
+
+    DefaultTasksRepositoryTest.kt
+              @ExperimentalCoroutinesApi
+              class DefaultTasksRepositoryTest {
+
+                  private val task1 = Task("Title1", "Description1")
+                  private val task2 = Task("Title2", "Description2")
+                  private val task3 = Task("Title3", "Description3")
+                  private val remoteTasks = listOf(task1, task2).sortedBy { it.id }
+                  private val localTasks = listOf(task3).sortedBy { it.id }
+                  private val newTasks = listOf(task3).sortedBy { it.id }
+
+                  private lateinit var tasksRemoteDataSource: FakeDataSource
+                  private lateinit var tasksLocalDataSource: FakeDataSource
+
+                  // Class under test
+                  private lateinit var tasksRepository: DefaultTasksRepository
+
+                  @Before
+                  fun createRepository() {
+                      tasksRemoteDataSource = FakeDataSource(remoteTasks.toMutableList())
+                      tasksLocalDataSource = FakeDataSource(localTasks.toMutableList())
+                      // Get a reference to the class under test
+                      tasksRepository = DefaultTasksRepository(
+                          // TODO Dispatchers.Unconfined should be replaced with Dispatchers.Main
+                          //  this requires understanding more about coroutines + testing
+                          //  so we will keep this as Unconfined for now.
+                          tasksRemoteDataSource, tasksLocalDataSource, Dispatchers.Unconfined
+                      )
+                  }
+`TODO 3.14`
+                  @Test
+                  fun getTasks_requestsAllTasksFromRemoteDataSource() = runBlockingTest {
+                      // When tasks are requested from the tasks repository
+                      val tasks = tasksRepository.getTasks(true) as Success
+
+                      // Then tasks are loaded from the remote data source
+                      assertThat(tasks.data, IsEqual(remoteTasks))
+                  }
+
+              }
+`TODO 3.15`
+@ExperimentalCouroutinesApi added to the above function
+  4. Run your new getTasks_requestsAllTasksFromRemoteDataSource test and
+     confirm it works and the error is gone! Splendid!
+
+________________________________________________________________________________
+
+                5. Where else to use Dependency Injection?
+________________________________________________________________________________
+
+
+You're going to set up the TasksViewModel for testing. Answer the following questions.
+
+QUESTION 1 OF 6
+Given you are writing tests for the TasksViewModel, what class should
+you make a test double for?
+
+ tip What does TasksViewModel directly depend on?
+
+  R: DefaultTasksRepository
+
+  Commet: Yes. DefaultTasksRepository is the complicated dependency that all
+          of the view models, including TasksViewModel, have.
+
+QUESTION 2 OF 6
+What type of test double should we make?
+
+  R: Fake
+
+  Comment: Correct, a Fake will work well for this situation. Much like
+           the data sources you need a "working" but less complicated
+           implementation.
+
+QUESTION 3 OF 6
+What type of dependency injection should we use here?
+
+Which class needs to take in the dependency?
+  R: Constructor injection
+
+  Comment: Yep, similar to last time we want to do constructor injection
+
+QUESTION 4 OF 6
+Which class should we change the constructor of to use constructor dependency injection?
+
+tip: Which class needs to take in the dependency?
+
+  R: ViewModel
+
+  Comment: Right. Since the ViewModel is what we are testing, you'll modify it's constructor to take in the dependency.
+
+QUESTION 5 OF 6
+Which dependency is the one you're going to create a fake version of?
+
+tip: What are the dependencies you will inject?
+
+  R: Repository
+
+  Comment: Yes, the repository is the dependency you will inject into the ViewModel.
+
+QUESTION 6 OF 6
+
+This is review from the previous course. What class must you implement to change the constructor of a ViewModel?
+
+  R: ViewModelProvider.Factory
+  Comment: Yep. You must implement a ViewModelProvider.Factory to change what a ViewModel is constructed with.
+
+________________________________________________________________________________
+
+                    6. Set Up a Fake Repository
+________________________________________________________________________________
+
+In this step you'll set up a Fake repository called FakeTestRepository.
+
+Step 1: Create a TasksRepository Interface
+
+  The first step towards using constructor dependency injection, is to
+  create a common interface shared between the fake and the real class.
+
+    1. Open DefaultTasksRepository and right click on the class name.
+       Then select Refactor -> Extract -> Interface:
+
+https://video.udacity-data.com/topher/2019/October/5dadc659_6.setupafakerepo1/6.setupafakerepo1.png
+
+    2. Choose Extract to separate file:
+
+https://video.udacity-data.com/topher/2019/October/5dadc65a_6.setupafakerepo2/6.setupafakerepo2.png
+
+    3. In the Extract Interface window, change the interface name
+       to TasksRepository.
+
+    4. In the Members to form interface section, check all members
+       except the two companion members and the private methods:
+
+https://video.udacity-data.com/topher/2019/October/5dadc65c_6.setupafakerepo3/6.setupafakerepo3.png
+
+    5. Click Refactor. The new TasksRepository interface should appear
+       in the data/source package:
+
+https://video.udacity-data.com/topher/2019/October/5dadc65c_6.setupafakerepo4/6.setupafakerepo4.png
+
+  And DefaultTasksRepository now implements TasksRepository.
+
+
+    6. Run your app (not the tests) to make sure everything is still in working order:
+
+Step 2: Create FakeTestRepository
+
+  Now that you have the interface, you can create the DefaultTaskRepository test double.
+
+    1. In the test source set, in data/source create the kotlin class FakeTestRepository.kt.
+
+    2. Extend from the TasksRepository interface:
+
+FakeTestRepository.kt
+            class FakeTestRepository : TasksRepository  {
+            }
+
+  You now will be told you need to implement the interface methods.
+
+    3. Hover over the error until you see the suggestion menu, then click
+       and select Implement members:
+
+https://video.udacity-data.com/topher/2019/October/5dadc65d_6.setupafakerepo6/6.setupafakerepo6.png
+
+    4. Select all of the methods and press OK:
+
+https://video.udacity-data.com/topher/2019/October/5dadc65d_6.setupafakerepo7/6.setupafakerepo7.png
+
+Step 3. Implement FakeTestRepository methods
+
+    1. Add both a LinkedHashMap variable representing the current list
+       of tasks and a MutableLiveData for your observable
+       tasks: FakeTestRepository.kt
+
+              class FakeTestRepository : TasksRepository {
+
+                  var tasksServiceData: LinkedHashMap<String, Task> = LinkedHashMap()
+
+                  private val observableTasks = MutableLiveData<Result<List<Task>>>()
+
+
+                  // Rest of class
+              }
+
+Implement the following methods:
+
+    2. getTasks - This method should just take the tasksServiceData and turn it into a list using tasksServiceData.values.toList() and then return that as a Success result.
+
+    3. refreshTasks - Updates the value of observableTasks to be what is returned by getTasks().
+
+    4. observeTasks - Create a coroutine using runBlocking and run refreshTasks, then return observableTasks.
+
+  Here are those methods:
+
+    FakeTestRepository.kt
+              class FakeTestRepository : TasksRepository {
+
+                  var tasksServiceData: LinkedHashMap<String, Task> = LinkedHashMap()
+
+                  private val observableTasks = MutableLiveData<Result<List<Task>>>()
+
+                  override suspend fun getTasks(forceUpdate: Boolean): Result<List<Task>> {
+                      return Result.Success(tasksServiceData.values.toList())
+                  }
+
+                  override suspend fun refreshTasks() {
+                      observableTasks.value = getTasks()
+                  }
+
+                  override fun observeTasks(): LiveData<Result<List<Task>>> {
+                      runBlocking { refreshTasks() }
+                      return observableTasks
+                  }
+
+                  // Rest of class
+
+              }
+
+Step 4: Add a Method for Testing to addTasks
+
+    1. Add the addTasks method, which takes in a vararg of tasks, adds
+       each to the HashMap and then refreshes the tasks:
+
+FakeTestRepository.kt
+              fun addTasks(vararg tasks: Task) {
+                  for (task in tasks) {
+                      tasksServiceData[task.id] = task
+                  }
+                  runBlocking { refreshTasks() }
+              }
+
+    At this point you have a fake repository for testing with a few
+    of the key methods implemented.
+
+________________________________________________________________________________
+
+                 7. Use the Fake Repository inside a ViewModel
+________________________________________________________________________________
+
+
+    In this task you'll use a fake class inside of a ViewModel. This will
+    involve the use of a ViewModelProvider.Factory; this was explained in
+    the Developing Android Apps with Kotlin Course's
+    Lesson 5: App Architecture (UI Layer) - Concept 22.
+    Exercise: Add a ViewModelFactory.
+
+https://developer.android.com/reference/androidx/lifecycle/ViewModelProvider.Factory.html
+
+Step 1: Make and use a ViewModelFactory in TasksViewModel
+  You'll start with just updating the classes and test related to the Tasks screen.
+
+    1. Open TasksViewModel.
+
+    2. Change the constructor of TasksViewModel to take in TasksRepository rather than constructing it inside the class:
+
+TasksViewModel.kt
+              // REPLACE
+              class TasksViewModel(application: Application) : AndroidViewModel(application) {
+
+                  private val tasksRepository = DefaultTasksRepository.getRepository(application)
+
+                  // Rest of class
+              }
+
+
+              // WITH
+
+              class TasksViewModel( private val tasksRepository: TasksRepository ) : ViewModel() {
+                  // Rest of class
+              }
+
+  Since you changed the constructor, you now need to use a
+  ViewModelProvider.Factory to construct TasksViewModel. You'll put
+  the factory class in the same file as the TasksViewModel, but you
+  could also put it in its own file.
+
+    3. At the bottom of the TasksViewModel file, outside the class, add a TasksViewModelFactory which takes in a plain TasksRepository:
+
+    TasksViewModel.kt
+              @Suppress("UNCHECKED_CAST")
+              class TasksViewModelFactory (
+                  private val tasksRepository: TasksRepository
+              ) : ViewModelProvider.NewInstanceFactory() {
+                  override fun <T : ViewModel> create(modelClass: Class<T>) =
+                      (TasksViewModel(tasksRepository) as T)
+              }
+
+  Now that you have the factory, use it wherever you construct your view model.
+
+    4. Update TasksFragment to use the factory:
+    TasksFragment.kt
+            // REPLACE
+            private val viewModel by viewModels<TasksViewModel>()
+
+            // WITH
+
+            private val viewModel by viewModels<TasksViewModel> {
+                TasksViewModelFactory(DefaultTasksRepository.getRepository(requireActivity().application))
+            }
+
+    5. Run your app code and make sure everything is still working!
+
+Step 2: Use FakeTestRepository inside TasksViewModelTest
+
+  Now instead of using the real repository in your view model tests, you can use the fake repository.
+
+    1. Open up TasksViewModelTest.
+
+    2. Add a FakeTestRepository property in the TasksViewModelTest:
+
+              TasksViewModelTest.kt TKTK check
+                            @RunWith(AndroidJUnit4::class)
+                            class TasksViewModelTest {
+
+                                // Use a fake repository to be injected into the viewmodel
+                                private lateinit var tasksRepository: FakeTestRepository
+
+                                // Rest of class
+                            }
+
+    3. Update the setupViewModel method to make a FakeTestRepository with three tasks and then construct the tasksViewModel with this repository.
+
+      TasksViewModelTest.kt
+
+                  @Before
+                  fun setupViewModel() {
+                      // We initialise the tasks to 3, with one active and two completed
+                      tasksRepository = FakeTestRepository()
+                      val task1 = Task("Title1", "Description1")
+                      val task2 = Task("Title2", "Description2", true)
+                      val task3 = Task("Title3", "Description3", true)
+                      tasksRepository.addTasks(task1, task2, task3)
+
+                      tasksViewModel = TasksViewModel(tasksRepository)
+
+                  }
+      4. Because you are no longer using the AndroidX Test ApplicationProvider.getApplicationContext code, you can also remove the @RunWith(AndroidJUnit4::class) annotation.
+
+      5. Run your tests, make sure they all still work!
+
+    By using constructor dependency injection, you've now removed the DefaultTasksRepository as a dependency and replaced it with your
+    FakeTestRepository in the tests.
+
+Step 3. Also Update TaskDetail Fragment and ViewModel
+
+  Following the same sets you just completed, on your own, do the same steps for TaskDetailFragment and TaskDetailViewModel:
+
+      1. Update the TaskDetailViewModel constructor to take in a TasksRepository.
+
+      2. Add a TaskDetailViewModelFactory.
+
+      3. Update the TaskDetailFragment to use the factory.
+
+  Remember to run your application code! The app should work exactly the same, even though you refactored the code.
+
+    If you'd like to avoid building a separate factory for each view model, check out the Architecture Blueprints reactive sample, which shows a slightly more complicated version of the tests you are building. It includes a generic ViewModelFactory that can generate any view model needed and this extension function.
+
+
+    You are now able to use a FakeTestRepository instead of the real repository in TasksFragment and TasksDetailFragment.
+
+________________________________________________________________________________
+
+                          8. FragmentScenario
+________________________________________________________________________________
+
+                    NOTHING HERE
+
+________________________________________________________________________________
+
+                     9. Launch a Fragment from a Test
+________________________________________________________________________________
+
+
+In this step you'll use FragmentScenario to launch a fragment from a test. You can learn more about this in the documentation.
+https://developer.android.com/reference/kotlin/androidx/fragment/app/testing/FragmentScenario.html
+https://developer.android.com/guide/fragments/test
+
+Step 1: Add Gradle Dependencies
+
+    1. Add the following gradle dependencies:
+
+              app/build.gradle
+                  // Dependencies for Android instrumented unit tests
+                  androidTestImplementation "junit:junit:$junitVersion"
+                  androidTestImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion"
+
+                  // Testing code should not be included in the main code.
+                  // Once https://issuetracker.google.com/128612536 is fixed this can be fixed.
+
+                  implementation "androidx.fragment:fragment-testing:$fragmentVersion"
+                  implementation "androidx.test:core:$androidXTestCoreVersion"
+
+Step 2: Make a TaskDetailFragmentTest class
+
+    1. Open taskdetail.TaskDetailFragment.
+
+    2. Generate a test for TaskDetailFragment as you've done before. Accept the default choices and put it in the androidTest source set, NOT the test source set:
+
+https://video.udacity-data.com/topher/2019/October/5dadc65e_8.launchfragmentfromtest1/8.launchfragmentfromtest1.png
+
+    3. Add the following annotations to the TaskDetailFragmentTest class:
+
+TaskDetailFragmentTest.kt
+              @MediumTest
+              @RunWith(AndroidJUnit4::class)
+              class TaskDetailFragmentTest {
+
+              }
+
+Step 3: Launch a fragment from a test
+
+    1. Copy this test into TaskDetailFragmentTest:
+
+              TaskDetailFragmentTest.kt
+
+                  @Test
+                  fun activeTaskDetails_DisplayedInUi() {
+                      // GIVEN - Add active (incomplete) task to the DB
+                      val activeTask = Task("Active Task", "AndroidX Rocks", false)
+
+                      // WHEN - Details fragment launched to display task
+                      val bundle = TaskDetailFragmentArgs(activeTask.id).toBundle()
+                      launchFragmentInContainer<TaskDetailFragment>(bundle, R.style.AppTheme)
+                      Thread.sleep(2000)
+
+                  }
+Here you are:
+
+    * Creating a task.
+
+    * Creating a Bundle, which represents the fragment arguments for the task that get passed into the fragment).
+
+    * The launchFragmentInContainer function creates a FragmentScenario, with this bundle and a theme.
+
+    2. This is an instrumented test, so make sure the emulator or your device is visible.
+
+    3. Run the test.
+
+    A few things should happen. First, because this is an instrumented test, the test will run on either your physical device (if connected) or an emulator. It should launch the fragment. Notice how it doesn't navigate through any other fragment or have any menus associated with the activity - it is just the fragment.
+
+Finally if you look closely, you'll notice that the fragment says "No data" - it doesn't actually successfully load up the task data.
+
+https://video.udacity-data.com/topher/2019/October/5dadc65f_8.launchfragmentfromtest2/8.launchfragmentfromtest2.png
+
+You have this FakeTestRepository, but you need to replace your real repository with your fake one for your fragment. You'll do this next!
 
 ________________________________________________________________________________

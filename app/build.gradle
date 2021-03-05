@@ -86,10 +86,10 @@ dependencies {
     // Other dependencies
     testImplementation "org.hamcrest:hamcrest-all:1.3"
 
-
-
-
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
     implementation "androidx.fragment:fragment-ktx:$fragmentKtxVersion"
+
+    //TODO 3.13
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.4.3"
 }
