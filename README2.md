@@ -1742,7 +1742,6 @@ Step 2: Use FakeTestRepository inside TasksViewModelTest
                                 // Rest of class
                             }
 
-`TODO 4.10`
     3. Update the setupViewModel method to make a FakeTestRepository with three tasks and then construct the tasksViewModel with this repository.
 
       TasksViewModelTest.kt
@@ -1800,6 +1799,7 @@ In this step you'll use FragmentScenario to launch a fragment from a test. You c
 https://developer.android.com/reference/kotlin/androidx/fragment/app/testing/FragmentScenario.html
 https://developer.android.com/guide/fragments/test
 
+`TODO 5.2`
 Step 1: Add Gradle Dependencies
 
     1. Add the following gradle dependencies:
@@ -1810,14 +1810,17 @@ Step 1: Add Gradle Dependencies
                   androidTestImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion"
 
                   // Testing code should not be included in the main code.
-                  // Once https://issuetracker.google.com/128612536 is fixed this can be fixed.
+                  // Once https://issuetracker.google.com/128612536 is fixed
+                     this can be fixed.
 
                   implementation "androidx.fragment:fragment-testing:$fragmentVersion"
                   implementation "androidx.test:core:$androidXTestCoreVersion"
 
+`TODO 5.1`
 Step 2: Make a TaskDetailFragmentTest class
 
     1. Open taskdetail.TaskDetailFragment.
+
 
     2. Generate a test for TaskDetailFragment as you've done before. Accept the default choices and put it in the androidTest source set, NOT the test source set:
 
@@ -1832,6 +1835,7 @@ TaskDetailFragmentTest.kt
 
               }
 
+`TODO 5.3`
 Step 3: Launch a fragment from a test
 
     1. Copy this test into TaskDetailFragmentTest:
