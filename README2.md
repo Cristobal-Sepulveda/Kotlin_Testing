@@ -1551,6 +1551,7 @@ https://video.udacity-data.com/topher/2019/October/5dadc65a_6.setupafakerepo2/6.
 
 https://video.udacity-data.com/topher/2019/October/5dadc65c_6.setupafakerepo3/6.setupafakerepo3.png
 
+`TODO 4.1`
     5. Click Refactor. The new TasksRepository interface should appear
        in the data/source package:
 
@@ -1567,12 +1568,14 @@ Step 2: Create FakeTestRepository
 
     1. In the test source set, in data/source create the kotlin class FakeTestRepository.kt.
 
+    `TODO 4.2`
     2. Extend from the TasksRepository interface:
 
 FakeTestRepository.kt
             class FakeTestRepository : TasksRepository  {
             }
 
+`TODO 4.3`
   You now will be told you need to implement the interface methods.
 
     3. Hover over the error until you see the suggestion menu, then click
@@ -1585,7 +1588,7 @@ https://video.udacity-data.com/topher/2019/October/5dadc65d_6.setupafakerepo6/6.
 https://video.udacity-data.com/topher/2019/October/5dadc65d_6.setupafakerepo7/6.setupafakerepo7.png
 
 Step 3. Implement FakeTestRepository methods
-
+`TODO 4.4`
     1. Add both a LinkedHashMap variable representing the current list
        of tasks and a MutableLiveData for your observable
        tasks: FakeTestRepository.kt
@@ -1636,6 +1639,7 @@ Implement the following methods:
 
 Step 4: Add a Method for Testing to addTasks
 
+`TODO 4.5`
     1. Add the addTasks method, which takes in a vararg of tasks, adds
        each to the HashMap and then refreshes the tasks:
 
@@ -1669,6 +1673,7 @@ Step 1: Make and use a ViewModelFactory in TasksViewModel
 
     1. Open TasksViewModel.
 
+`TODO 4.6`
     2. Change the constructor of TasksViewModel to take in TasksRepository rather than constructing it inside the class:
 
 TasksViewModel.kt
@@ -1691,7 +1696,7 @@ TasksViewModel.kt
   ViewModelProvider.Factory to construct TasksViewModel. You'll put
   the factory class in the same file as the TasksViewModel, but you
   could also put it in its own file.
-
+`TODO 4.7`
     3. At the bottom of the TasksViewModel file, outside the class, add a TasksViewModelFactory which takes in a plain TasksRepository:
 
     TasksViewModel.kt
@@ -1704,7 +1709,7 @@ TasksViewModel.kt
               }
 
   Now that you have the factory, use it wherever you construct your view model.
-
+`TODO 4.8`
     4. Update TasksFragment to use the factory:
     TasksFragment.kt
             // REPLACE
@@ -1724,6 +1729,7 @@ Step 2: Use FakeTestRepository inside TasksViewModelTest
 
     1. Open up TasksViewModelTest.
 
+`TODO 4.9`
     2. Add a FakeTestRepository property in the TasksViewModelTest:
 
               TasksViewModelTest.kt TKTK check
@@ -1736,6 +1742,7 @@ Step 2: Use FakeTestRepository inside TasksViewModelTest
                                 // Rest of class
                             }
 
+`TODO 4.10`
     3. Update the setupViewModel method to make a FakeTestRepository with three tasks and then construct the tasksViewModel with this repository.
 
       TasksViewModelTest.kt

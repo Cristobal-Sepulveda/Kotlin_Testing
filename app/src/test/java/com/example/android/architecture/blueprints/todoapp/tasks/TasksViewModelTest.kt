@@ -4,6 +4,8 @@ import android.os.Build
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.android.architecture.blueprints.todoapp.data.Task
+import com.example.android.architecture.blueprints.todoapp.data.source.FakeTestRepository
 import com.example.android.architecture.blueprints.todoapp.getOrAwaitValue
 import org.hamcrest.Matchers.*
 import org.junit.Assert.*
@@ -13,8 +15,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-//TODO 2.8
-@RunWith(AndroidJUnit4::class)
+/*//TODO 2.8
+@RunWith(AndroidJUnit4::class)*/
 @Config(sdk = [Build.VERSION_CODES.P])
 //TODO 2.5
 class TasksViewModelTest{
@@ -23,6 +25,8 @@ class TasksViewModelTest{
     // Subject under test
     private lateinit var tasksViewModel: TasksViewModel
 
+    //TODO 4.9
+    private lateinit var tasksRepository: FakeTestRepository
     //TODO 2.10
      @get:Rule
      var instantExecutorRule = InstantTaskExecutorRule()
@@ -30,7 +34,16 @@ class TasksViewModelTest{
     //TODO 2.15
     @Before
     fun setupViewModel() {
-        tasksViewModel = TasksViewModel(ApplicationProvider.getApplicationContext())
+        //TODO 4.10
+        // We initialise the tasks to 3, with one active and two completed
+        tasksRepository = FakeTestRepository()
+        val task1 = Task("Title1", "Description1")
+        val task2 = Task("Title2", "Description2", true)
+        val task3 = Task("Title3", "Description3", true)
+        tasksRepository.addTasks(task1, task2, task3)
+
+        //TODO 4.10
+        tasksViewModel = TasksViewModel(tasksRepository)
     }
 
     @Test
