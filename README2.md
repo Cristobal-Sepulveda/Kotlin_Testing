@@ -1874,3 +1874,820 @@ https://video.udacity-data.com/topher/2019/October/5dadc65f_8.launchfragmentfrom
 You have this FakeTestRepository, but you need to replace your real repository with your fake one for your fragment. You'll do this next!
 
 ________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                        10. Service Locators
+________________________________________________________________________________
+
+
+Let's make a ServiceLocator class
+
+`TODO 5.4`
+Step 1: Create the ServiceLocator
+
+    1. Create the file ServiceLocator.kt in the top level of the main source set.
+
+https://video.udacity-data.com/topher/2019/October/5dadc65f_9.servicelocators/9.servicelocators.png
+
+    2. Define an object called ServiceLocator.
+https://kotlinlang.org/docs/object-declarations.html#object-declarations
+    3. Create database and repository instance variables and set both to null.
+https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.jvm/-volatile/
+    4. Annotate the repository with @Volatile because it could get used by multiple threads (@Volatile is explained in detail here).
+    https://developer.android.com/codelabs/kotlin-android-training-room-database?index=..%2F..android-kotlin-fundamentals#5
+
+  Your code should look like this:
+
+              ServiceLocator.kt
+
+              object ServiceLocator {
+`TODO 5.6`
+                  private var database: ToDoDatabase? = null
+                  @Volatile
+                  var tasksRepository: TasksRepository? = null
+
+              }
+
+  Right now the only thing your ServiceLocator needs to do is know
+  how to return a TasksRepository. It'll return a pre-existing
+  DefaultTasksRepository or make and return a
+  new DefaultTasksRepository if needed.
+
+`TODO 5.5`
+  You'll define the following functions:
+
+    5. provideTasksRepository - Either provides an already existing repository or creates a new one. This method should be synchronized on this to avoid, in situations with multiple threads running, ever accidentally creating two repository instances.
+
+    6. createTasksRepository- Code for creating a new repository. Will call createTaskLocalDataSource and create a new TasksRemoteDataSource.
+
+    7. createTaskLocalDataSource - Code for creating a new local data source. Will call createDataBase.
+
+    8. createDataBase - Code for creating a new database.
+
+  The completed code is below:
+
+              ServiceLocator.kt
+              object ServiceLocator {
+
+                  private var database: ToDoDatabase? = null
+                  @Volatile
+                  var tasksRepository: TasksRepository? = null
+
+                  fun provideTasksRepository(context: Context): TasksRepository {
+                      synchronized(this) {
+                          return tasksRepository ?: createTasksRepository(context)
+                      }
+                  }
+
+                  private fun createTasksRepository(context: Context): TasksRepository {
+                      val newRepo = DefaultTasksRepository(TasksRemoteDataSource, createTaskLocalDataSource(context))
+                      tasksRepository = newRepo
+                      return newRepo
+                  }
+
+                  private fun createTaskLocalDataSource(context: Context): TasksDataSource {
+                      val database = database ?: createDataBase(context)
+                      return TasksLocalDataSource(database.taskDao())
+                  }
+
+                  private fun createDataBase(context: Context): ToDoDatabase {
+                      val result = Room.databaseBuilder(
+                          context.applicationContext,
+                          ToDoDatabase::class.java, "Tasks.db"
+                      ).build()
+                      database = result
+                      return result
+                  }
+              }
+
+Good job. Now that you have a ServiceLocator, you'll use it next.
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                        11. Use a Service Locator
+________________________________________________________________________________
+
+  In this step you'll refactor your main application code to
+  use your ServiceLocator.
+
+`TODO 6.1`
+Step 1: Use ServiceLocator in Application
+
+    1. At the top level of your package hierarchy, open TodoApplication and
+       create a val for your repository and assign it a repository that is
+       obtained using ServiceLocator.provideTaskRepository:
+
+  TodoApplication.kt
+              class TodoApplication : Application() {
+
+                  val taskRepository: TasksRepository
+                      get() = ServiceLocator.provideTasksRepository(this)
+
+                  override fun onCreate() {
+                      super.onCreate()
+                      if (BuildConfig.DEBUG) Timber.plant(DebugTree())
+                  }
+              }
+
+`TODO 6.2`
+    2. Open DefaultTasksRepository and delete the companion object:
+
+  DefaultTasksRepository.kt
+              //  DELETE THIS COMPANION OBJECT
+              companion object {
+                  @Volatile
+                  private var INSTANCE: DefaultTasksRepository? = null
+
+                  fun getRepository(app: Application): DefaultTasksRepository {
+                      return INSTANCE ?: synchronized(this) {
+                          val database = Room.databaseBuilder(app,
+                              ToDoDatabase::class.java, "Tasks.db")
+                              .build()
+                          DefaultTasksRepository(TasksRemoteDataSource, TasksLocalDataSource(database.taskDao())).also {
+                              INSTANCE = it
+                          }
+                      }
+                  }
+              }
+
+`TODO 6.3`
+    3. Open TaskDetailFragement and find the call to getRepository
+       at the top of the class. Replace this call with a call that
+       gets the repository from TodoApplication:
+
+  TaskDetailFragment.kt
+              // REPLACE this code
+              private val viewModel by viewModels<TaskDetailViewModel> {
+                  TaskDetailViewModelFactory(DefaultTasksRepository.
+                    getRepository(requireActivity().application))
+              }
+              // WITH this code
+              private val viewModel by viewModels<TaskDetailViewModel> {
+                  TaskDetailViewModelFactory((requireContext().applicationContext as TodoApplication).taskRepository)
+              }
+
+`TODO 6.4`
+    5. Do the same for TasksFragment:
+
+  TasksFragment.kt
+              // REPLACE this code
+                  private val viewModel by viewModels<TasksViewModel> {
+                      TasksViewModelFactory(DefaultTasksRepository.
+                        getRepository(requireActivity().application))
+                  }
+              // WITH this code
+                  private val viewModel by viewModels<TasksViewModel> {
+                      TasksViewModelFactory((requireContext().applicationContext as TodoApplication).taskRepository)
+                  }
+
+`TODO 6.5`
+    6. For StatisticsViewModel and AddEditTaskViewModel you should update
+       the code that acquires the repository to use the repository
+       from the TodoApplication as well:
+
+  TasksFragment.kt
+              // REPLACE this code
+                  private val tasksRepository = DefaultTasksRepository.getRepository(application)
+
+              // WITH this code
+
+                  private val tasksRepository = (application as TodoApplication).taskRepository
+
+    7. Run your application (not the test)!
+
+  Since you only refactored, the app should run the same without issue.
+
+________________________________________________________________________________
+
+
+
+
+________________________________________________________________________________
+
+                12. Use Your Service Locator in your Tests
+________________________________________________________________________________
+
+  Now you'll use the ServiceLocator to swap a fake into your view model
+  and fragment integration tests.
+
+Step 1: Create FakeAndroidTestRepository
+
+  You already have a FakeTestRepository in the test source set. You cannot share test classes between the test and androidTest source sets by default. So, you need to make a duplicate FakeTestRepository class in the androidTest source set, but call it FakeAndroidTestRepository.
+
+  If you'd like to share files between the test and androidTest source set, you can configure, via gradle, a sharedTest folder as seen in the Architecture Blueprints reactive sample.
+https://github.com/android/architecture-samples/blob/f4128dd8dbea5d1aac5d5acd5f346bb82187fbe6/app/build.gradle#L20
+https://github.com/android/architecture-samples/tree/reactive/app/src
+https://github.com/android/architecture-samples/tree/reactive
+
+    1. Right click the androidTest source set and make a data package. Right click again and make a source package.
+
+    2. Make new class in this source package called FakeAndroidTestRepository.kt.
+
+    3. Copy over the following code to that class:
+
+              FakeAndroidTestRepository.kt
+
+              import androidx.annotation.VisibleForTesting
+              import androidx.lifecycle.LiveData
+              import androidx.lifecycle.MutableLiveData
+              import androidx.lifecycle.map
+              import com.example.android.architecture.blueprints.todoapp.data.Result
+              import com.example.android.architecture.blueprints.todoapp.data.Result.Error
+              import com.example.android.architecture.blueprints.todoapp.data.Result.Success
+              import com.example.android.architecture.blueprints.todoapp.data.Task
+              import kotlinx.coroutines.runBlocking
+              import java.util.LinkedHashMap
+
+
+              class FakeAndroidTestRepository : TasksRepository {
+
+                  var tasksServiceData: LinkedHashMap<String, Task> = LinkedHashMap()
+
+                  private var shouldReturnError = false
+
+                  private val observableTasks = MutableLiveData<Result<List<Task>>>()
+
+                  fun setReturnError(value: Boolean) {
+                      shouldReturnError = value
+                  }
+
+                  override suspend fun refreshTasks() {
+                      observableTasks.value = getTasks()
+                  }
+
+                  override suspend fun refreshTask(taskId: String) {
+                      refreshTasks()
+                  }
+
+                  override fun observeTasks(): LiveData<Result<List<Task>>> {
+                      runBlocking { refreshTasks() }
+                      return observableTasks
+                  }
+
+                  override fun observeTask(taskId: String): LiveData<Result<Task>> {
+                      runBlocking { refreshTasks() }
+                      return observableTasks.map { tasks ->
+                          when (tasks) {
+                              is Result.Loading -> Result.Loading
+                              is Error -> Error(tasks.exception)
+                              is Success -> {
+                                  val task = tasks.data.firstOrNull() { it.id == taskId }
+                                      ?: return@map Error(Exception("Not found"))
+                                  Success(task)
+                              }
+                          }
+                      }
+                  }
+
+                  override suspend fun getTask(taskId: String, forceUpdate: Boolean): Result<Task> {
+                      if (shouldReturnError) {
+                          return Error(Exception("Test exception"))
+                      }
+                      tasksServiceData[taskId]?.let {
+                          return Success(it)
+                      }
+                      return Error(Exception("Could not find task"))
+                  }
+
+                  override suspend fun getTasks(forceUpdate: Boolean): Result<List<Task>> {
+                      if (shouldReturnError) {
+                          return Error(Exception("Test exception"))
+                      }
+                      return Success(tasksServiceData.values.toList())
+                  }
+
+                  override suspend fun saveTask(task: Task) {
+                      tasksServiceData[task.id] = task
+                  }
+
+                  override suspend fun completeTask(task: Task) {
+                      val completedTask = Task(task.title, task.description, true, task.id)
+                      tasksServiceData[task.id] = completedTask
+                  }
+
+                  override suspend fun completeTask(taskId: String) {
+                      // Not required for the remote data source.
+                      throw NotImplementedError()
+                  }
+
+                  override suspend fun activateTask(task: Task) {
+                      val activeTask = Task(task.title, task.description, false, task.id)
+                      tasksServiceData[task.id] = activeTask
+                  }
+
+                  override suspend fun activateTask(taskId: String) {
+                      throw NotImplementedError()
+                  }
+
+                  override suspend fun clearCompletedTasks() {
+                      tasksServiceData = tasksServiceData.filterValues {
+                          !it.isCompleted
+                      } as LinkedHashMap<String, Task>
+                  }
+
+                  override suspend fun deleteTask(taskId: String) {
+                      tasksServiceData.remove(taskId)
+                      refreshTasks()
+                  }
+
+                  override suspend fun deleteAllTasks() {
+                      tasksServiceData.clear()
+                      refreshTasks()
+                  }
+
+
+                  fun addTasks(vararg tasks: Task) {
+                      for (task in tasks) {
+                          tasksServiceData[task.id] = task
+                      }
+                      runBlocking { refreshTasks() }
+                  }
+              }
+
+Step 2: Prepare your ServiceLocator for Tests
+
+    1. Open ServiceLocator.kt.
+
+    2. Mark the setter for tasksRepository as @VisibleForTesting.
+
+  ServiceLocator.kt
+                  @Volatile
+                  var tasksRepository: TasksRepository? = null
+                      @VisibleForTesting set
+
+  One of the downsides of using a service locator is that it is a shared singleton. In addition to needing to reset the state of the service locator when the test finishes, you cannot run tests in parallel.
+
+  This doesn't happen when you use dependency injection which is one of the
+  reasons to prefer constructor dependency injection when you can use it.
+
+  You can read the documentation to learn more about the trade offs.
+
+    3. Add an instance variable called lock with the Any value:
+
+  ServiceLocator.kt
+                private val lock = Any()
+
+    4. Add a testing specific method called resetRepository which clears out
+       the database and sets both the repository and database to null:
+
+  ServiceLocator.kt
+                  @VisibleForTesting
+                  fun resetRepository() {
+                      synchronized(lock) {
+                          runBlocking {
+                              TasksRemoteDataSource.deleteAllTasks()
+                          }
+                          // Clear all data to avoid test pollution.
+                          database?.apply {
+                              clearAllTables()
+                              close()
+                          }
+                          database = null
+                          tasksRepository = null
+                      }
+                  }
+
+Step 3: Use your ServiceLocator
+
+    1. Open TaskDetailFragmentTest.
+
+    2. Declare a lateinit TasksRepository variable.
+
+    3. Add a setup and tear down method which sets up a
+       FakeAndroidTestRepository before each test and cleans it up after each test:
+
+  TaskDetailFragmentTest.kt
+                  private lateinit var repository: TasksRepository
+
+                  @Before
+                  fun initRepository() {
+                      repository = FakeAndroidTestRepository()
+                      ServiceLocator.tasksRepository = repository
+                  }
+
+                  @After
+                  fun cleanupDb() = runBlockingTest {
+                      ServiceLocator.resetRepository()
+                  }
+
+    4. Wrap the function body of activeTaskDetails_DisplayedInUi() in
+       runBlockingTest.
+
+    5. Save activeTask in the repository before launching the fragment.
+
+                  repository.saveTask(activeTask)
+
+  The final test looks like this:
+
+  TaskDetailFragmentTest.kt
+
+              @Test
+              fun activeTaskDetails_DisplayedInUi()  = runBlockingTest{
+                  // GIVEN - Add active (incomplete) task to the DB
+                  val activeTask = Task("Active Task", "AndroidX Rocks", false)
+                  repository.saveTask(activeTask)
+
+                  // WHEN - Details fragment launched to display task
+                  val bundle = TaskDetailFragmentArgs(activeTask.id).toBundle()
+                  launchFragmentInContainer<TaskDetailFragment>(bundle, R.style.AppTheme)
+
+              }
+
+    6. Annotate the whole class with @ExperimentalCoroutinesApi.
+
+  When finished, the code will look like this:
+
+  TaskDetailFragmentTest.kt
+
+              @MediumTest
+              @ExperimentalCoroutinesApi
+              @RunWith(AndroidJUnit4::class)
+              class TaskDetailFragmentTest {
+
+                  private lateinit var repository: TasksRepository
+
+                  @Before
+                  fun initRepository() {
+                      repository = FakeAndroidTestRepository()
+                      ServiceLocator.tasksRepository = repository
+                  }
+
+                  @After
+                  fun cleanupDb() = runBlockingTest {
+                      ServiceLocator.resetRepository()
+                  }
+
+
+                  @Test
+                  fun activeTaskDetails_DisplayedInUi()  = runBlockingTest{
+                      // GIVEN - Add active (incomplete) task to the DB
+                      val activeTask = Task("Active Task", "AndroidX Rocks", false)
+                      repository.saveTask(activeTask)
+
+                      // WHEN - Details fragment launched to display task
+                      val bundle = TaskDetailFragmentArgs(activeTask.id).toBundle()
+                      launchFragmentInContainer<TaskDetailFragment>(bundle, R.style.AppTheme)
+
+                  }
+
+              }
+
+    7. Run the activeTaskDetails_DisplayedInUi() test.
+
+  Much like before, you should see the fragment, except this time, because
+  you properly set up the repository, it now shows the task information.
+
+https://video.udacity-data.com/topher/2019/October/5dadc660_11.useservicelocatorsintest/11.useservicelocatorsintest.png
+________________________________________________________________________________
+
+
+
+
+________________________________________________________________________________
+
+                    13. Using Espresso to Test a Fragment
+________________________________________________________________________________
+
+  Time to write an Espresso test.
+
+Step 1: Turn off Animations
+
+  For Espresso UI testing, it's best practice to turn animations off (also your test will run faster!):
+
+    1. On your testing device, go to Settings > Developer options.
+
+    2. Disable these three settings: Window animation scale, Transition
+       animation scale and Animator duration scale:
+
+https://video.udacity-data.com/topher/2019/October/5dadc660_12.usingespressototestafrag/12.usingespressototestafrag.png
+
+Step 2: Add an Espresso Test
+
+  The majority of espresso statements are made up of four parts:
+
+    1. Static Espresso method
+https://developer.android.com/reference/androidx/test/espresso/Espresso.html#onView%28org.hamcrest.Matcher%3Candroid.view.View%3E%29
+    2. ViewMatchers
+https://developer.android.com/reference/androidx/test/espresso/matcher/ViewMatchers.html
+    3. ViewAction
+https://developer.android.com/reference/androidx/test/espresso/ViewAction.html
+    4. ViewAssertion
+https://developer.android.com/reference/androidx/test/espresso/assertion/ViewAssertions#matches
+
+  Let's examine the full test.
+
+    1. Open TaskDetailFragmentTest.kt.
+
+    2. Update the activeTaskDetails_DisplayedInUi test:
+
+  TaskDetailFragmentTest.kt
+
+              @Test
+              fun activeTaskDetails_DisplayedInUi() = runBlockingTest{
+                  // GIVEN - Add active (incomplete) task to the DB
+                  val activeTask = Task("Active Task", "AndroidX Rocks", false)
+                  repository.saveTask(activeTask)
+
+                  // WHEN - Details fragment launched to display task
+                  val bundle = TaskDetailFragmentArgs(activeTask.id).toBundle()
+                  launchFragmentInContainer<TaskDetailFragment>(bundle, R.style.AppTheme)
+
+                  // THEN - Task details are displayed on the screen
+                  // make sure that the title/description are both shown and correct
+                  onView(withId(R.id.task_detail_title_text)).check(matches(isDisplayed()))
+                  onView(withId(R.id.task_detail_title_text)).check(matches(withText("Active Task")))
+                  onView(withId(R.id.task_detail_description_text)).check(matches(isDisplayed()))
+                  onView(withId(R.id.task_detail_description_text)).check(matches(withText("AndroidX Rocks")))
+                  // and make sure the "active" checkbox is shown unchecked
+                  onView(withId(R.id.task_detail_complete_checkbox)).check(matches(isDisplayed()))
+                  onView(withId(R.id.task_detail_complete_checkbox)).check(matches(not(isChecked())))
+              }
+
+  Here are the import statements if needed:
+
+            import androidx.test.espresso.Espresso.onView
+            import androidx.test.espresso.assertion.ViewAssertions.matches
+            import androidx.test.espresso.matcher.ViewMatchers.isChecked
+            import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
+            import androidx.test.espresso.matcher.ViewMatchers.withId
+            import androidx.test.espresso.matcher.ViewMatchers.withText
+            import org.hamcrest.core.IsNot.not
+
+  Everything after the // THEN comment uses Espresso.
+
+    3. Run the test and confirm it passes.
+________________________________________________________________________________
+
+
+
+
+________________________________________________________________________________
+
+                      14. Espresso Write Your Own Test
+________________________________________________________________________________
+
+Now it's time to write an Espresso test yourself.
+
+  Step 1: Write an Espresso
+
+    1. Create a new test called completedTaskDetails_DisplayedInUi and copy over this skeleton code:
+
+  TaskDetailFragmentTest.kt
+
+              @Test
+              fun completedTaskDetails_DisplayedInUi() = runBlockingTest{
+                  // GIVEN - Add completed task to the DB
+
+                  // WHEN - Details fragment launched to display task
+
+                  // THEN - Task details are displayed on the screen
+                  // make sure that the title/description are both shown and correct
+          }
+
+    2. Looking at the previous test, complete this test.
+
+    3. Run and confirm the test passes.
+
+________________________________________________________________________________
+
+
+
+
+________________________________________________________________________________
+
+                      15. Solution: Text Espresso Write Your Own Test
+________________________________________________________________________________
+
+
+  The finished completedTaskDetails_DisplayedInUi should look like this
+  when you're done:
+
+  TaskDetailFragmentTest.kt
+
+          @Test
+          fun completedTaskDetails_DisplayedInUi() = runBlockingTest{
+              // GIVEN - Add completed task to the DB
+              val completedTask = Task("Completed Task", "AndroidX Rocks", true)
+              repository.saveTask(completedTask)
+
+              // WHEN - Details fragment launched to display task
+              val bundle = TaskDetailFragmentArgs(completedTask.id).toBundle()
+              launchFragmentInContainer<TaskDetailFragment>(bundle, R.style.AppTheme)
+
+              // THEN - Task details are displayed on the screen
+              // make sure that the title/description are both shown and correct
+              onView(withId(R.id.task_detail_title_text)).check(matches(isDisplayed()))
+              onView(withId(R.id.task_detail_title_text)).check(matches(withText("Completed Task")))
+              onView(withId(R.id.task_detail_description_text)).check(matches(isDisplayed()))
+              onView(withId(R.id.task_detail_description_text)).check(matches(withText("AndroidX Rocks")))
+              // and make sure the "active" checkbox is shown unchecked
+              onView(withId(R.id.task_detail_complete_checkbox)).check(matches(isDisplayed()))
+              onView(withId(R.id.task_detail_complete_checkbox)).check(matches(isChecked()))
+          }
+
+________________________________________________________________________________
+
+
+
+
+________________________________________________________________________________
+
+                        16. Introduction to Mocks
+________________________________________________________________________________
+
+Nothing
+
+________________________________________________________________________________
+
+
+
+
+
+________________________________________________________________________________
+
+                   17. Using Mockito to Write Navigation Tests
+________________________________________________________________________________
+
+
+  As you saw in the video, you'll write an integration test that
+  includes the Navigation component. In doing so, you'll create
+  a mock, using Mockito.
+
+https://developer.android.com/guide/navigation
+https://site.mockito.org/
+
+  Step 1: Add Gradle Dependencies
+
+    1. Add the gradle dependencies:
+
+              app/build.gradle
+
+                  // Dependencies for Android instrumented unit tests
+                  androidTestImplementation "org.mockito:mockito-core:$mockitoVersion"
+
+                  androidTestImplementation "com.linkedin.dexmaker:dexmaker-mockito:$dexMakerVersion"
+
+                  androidTestImplementation "androidx.test.espresso:espresso-contrib:$espressoVersion"
+
+  Step 2: Create TasksFragmentTest
+
+    1. Open TasksFragment.
+
+    2. Right click on the TasksFragment class name and select Generate
+       then Test. Create a test in the androidTest source set.
+
+    3. Copy over this code to the TasksFragmentTest:
+
+  TasksFragmentTest.kt
+              @RunWith(AndroidJUnit4::class)
+              @MediumTest
+              @ExperimentalCoroutinesApi
+              class TasksFragmentTest {
+
+                  private lateinit var repository: TasksRepository
+
+                  @Before
+                  fun initRepository() {
+                      repository = FakeAndroidTestRepository()
+                      ServiceLocator.tasksRepository = repository
+                  }
+
+                  @After
+                  fun cleanupDb() = runBlockingTest {
+                      ServiceLocator.resetRepository()
+                  }
+
+              }
+
+    4. Add the test clickTask_navigateToDetailFragmentOne:
+
+  TasksFragmentTest.kt
+              @Test
+              fun clickTask_navigateToDetailFragmentOne() = runBlockingTest {
+                  repository.saveTask(Task("TITLE1", "DESCRIPTION1", false, "id1"))
+                  repository.saveTask(Task("TITLE2", "DESCRIPTION2", true, "id2"))
+
+                  // GIVEN - On the home screen
+                  val scenario = launchFragmentInContainer<TasksFragment>(Bundle(), R.style.AppTheme)
+
+              }
+
+    5. Use Mockito's mock function to create a mock:
+
+  TasksFragmentTest.kt
+              val navController = mock(NavController::class.java)
+
+    6. Make your new mock the fragment's NavController:
+
+  TasksFragmentTest.kt
+              scenario.onFragment {
+                  Navigation.setViewNavController(it.view!!, navController)
+              }
+
+    7. Add the code to click on the item in the RecyclerView that has
+       the text "TITLE1":
+
+  TasksFragmentTest.kt
+          // WHEN - Click on the first list item
+                  onView(withId(R.id.tasks_list))
+                      .perform(RecyclerViewActions.actionOnItem<RecyclerView.ViewHolder>(
+                          hasDescendant(withText("TITLE1")), click()))
+
+            RecyclerViewActions is part of the espresso-contrib library and
+            lets you perform Espresso actions on a RecyclerView.
+https://developer.android.com/training/testing/espresso/lists#recycler-view-list-items
+
+    8. Verify that navigate was called, with the correct argument:
+
+            TasksFragmentTest.kt
+
+            // THEN - Verify that we navigate to the first detail screen
+            verify(navController).navigate(
+                TasksFragmentDirections.actionTasksFragmentToTaskDetailFragment( "id1")
+
+  The complete test looks like this:
+
+          TasksFragmentTest.kt
+
+          @Test
+          fun clickTask_navigateToDetailFragmentOne() = runBlockingTest {
+              repository.saveTask(Task("TITLE1", "DESCRIPTION1", false, "id1"))
+              repository.saveTask(Task("TITLE2", "DESCRIPTION2", true, "id2"))
+
+              // GIVEN - On the home screen
+              val scenario = launchFragmentInContainer<TasksFragment>(Bundle(), R.style.AppTheme)
+
+                  val navController = mock(NavController::class.java)
+              scenario.onFragment {
+                  Navigation.setViewNavController(it.view!!, navController)
+              }
+
+              // WHEN - Click on the first list item
+              onView(withId(R.id.tasks_list))
+                  .perform(RecyclerViewActions.actionOnItem<RecyclerView.ViewHolder>(
+                      hasDescendant(withText("TITLE1")), click()))
+
+
+              // THEN - Verify that we navigate to the first detail screen
+              verify(navController).navigate(
+                  TasksFragmentDirections.actionTasksFragmentToTaskDetailFragment( "id1")
+              )
+          }
+
+    9. As always, remember to run your test!
+
+  In summary, to test navigation you can:
+
+    1. Use Mockito to create a NavController mock.
+
+    2. Attach that mocked NavController to the fragment.
+
+    3. Verify that navigate was called with the correct action and parameter(s).
+
+  Optional Step: Optional, write clickAddTaskButton_navigateToAddEditFragment
+  To see if you can write a navigation test yourself, try this:
+
+    1. Write the test clickAddTaskButton_navigateToAddEditFragment which
+       checks that if you click on the + FAB, you navigate to the
+       AddEditTaskFragment.
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+          18. Solution: Write Your Own Integration Test with Navigation
+________________________________________________________________________________
+
+  If you want to take a look at the solution up to this point, you can check
+  out this Github repo. You can compare the code from the end of the last
+  lesson to where the code is now here.
+
+https://github.com/udacity/android-testing/tree/end_codelab_2
+https://github.com/udacity/android-testing/compare/end_codelab_1...end_codelab_2
+
+The answer is:
+
+  TasksFragmentTest.kt
+          @Test
+          fun clickAddTaskButton_navigateToAddEditFragment() {
+              // GIVEN - On the home screen
+              val scenario = launchFragmentInContainer<TasksFragment>(Bundle(), R.style.AppTheme)
+              val navController = mock(NavController::class.java)
+              scenario.onFragment {
+                  Navigation.setViewNavController(it.view!!, navController)
+              }
+
+              // WHEN - Click on the "+" button
+              onView(withId(R.id.add_task_fab)).perform(click())
+
+              // THEN - Verify that we navigate to the add screen
+              verify(navController).navigate(
+                  TasksFragmentDirections.actionTasksFragmentToAddEditTaskFragment(
+                      null, getApplicationContext<Context>().getString(R.string.add_task)
+                  )
+              )
+          }

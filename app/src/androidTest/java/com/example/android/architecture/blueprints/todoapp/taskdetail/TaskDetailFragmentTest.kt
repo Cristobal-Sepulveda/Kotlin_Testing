@@ -3,6 +3,7 @@ package com.example.android.architecture.blueprints.todoapp.taskdetail
 import androidx.fragment.app.testing.launchFragmentInContainer
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
+import com.example.android.architecture.blueprints.todoapp.R
 import com.example.android.architecture.blueprints.todoapp.data.Task
 import org.junit.Assert.*
 import org.junit.Test

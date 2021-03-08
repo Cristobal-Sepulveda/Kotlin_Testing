@@ -20,6 +20,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.*
 import com.example.android.architecture.blueprints.todoapp.Event
 import com.example.android.architecture.blueprints.todoapp.R
+import com.example.android.architecture.blueprints.todoapp.ServiceLocator.tasksRepository
 import com.example.android.architecture.blueprints.todoapp.data.Result
 import com.example.android.architecture.blueprints.todoapp.data.Result.Success
 import com.example.android.architecture.blueprints.todoapp.data.Task
@@ -33,14 +34,14 @@ import kotlinx.coroutines.launch
  */
 class TaskDetailViewModel(application: Application) : ViewModel() {
 
-    // Note, for testing and architecture purposes, it's bad practice to construct the repository
+/*    // Note, for testing and architecture purposes, it's bad practice to construct the repository
     // here. We'll show you how to fix this during the codelab
-    private val tasksRepository = DefaultTasksRepository.getRepository(application)
+    private val tasksRepository = DefaultTasksRepository.getRepository(application)*/
 
     private val _taskId = MutableLiveData<String>()
 
     private val _task = _taskId.switchMap { taskId ->
-        tasksRepository.observeTask(taskId).map { computeResult(it) }
+        tasksRepository!!.observeTask(taskId).map { computeResult(it) }
     }
     val task: LiveData<Task?> = _task
 
@@ -65,7 +66,7 @@ class TaskDetailViewModel(application: Application) : ViewModel() {
 
     fun deleteTask() = viewModelScope.launch {
         _taskId.value?.let {
-            tasksRepository.deleteTask(it)
+            tasksRepository?.deleteTask(it)
             _deleteTaskEvent.value = Event(Unit)
         }
     }
@@ -77,10 +78,10 @@ class TaskDetailViewModel(application: Application) : ViewModel() {
     fun setCompleted(completed: Boolean) = viewModelScope.launch {
         val task = _task.value ?: return@launch
         if (completed) {
-            tasksRepository.completeTask(task)
+            tasksRepository?.completeTask(task)
             showSnackbarMessage(R.string.task_marked_complete)
         } else {
-            tasksRepository.activateTask(task)
+            tasksRepository?.activateTask(task)
             showSnackbarMessage(R.string.task_marked_active)
         }
     }
@@ -109,7 +110,7 @@ class TaskDetailViewModel(application: Application) : ViewModel() {
         _task.value?.let {
             _dataLoading.value = true
             viewModelScope.launch {
-                tasksRepository.refreshTask(it.id)
+                tasksRepository!!.refreshTask(it.id)
                 _dataLoading.value = false
             }
         }

@@ -39,7 +39,8 @@ class DefaultTasksRepository constructor(
         private val tasksLocalDataSource: TasksDataSource,
         private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO) : TasksRepository {
 
-    companion object {
+    //TODO 6.2: ELimitate companion object
+/*    companion object {
         @Volatile
         private var INSTANCE: DefaultTasksRepository? = null
 
@@ -56,7 +57,7 @@ class DefaultTasksRepository constructor(
                 }
             }
         }
-    }
+    }*/
 //TODO 3.6
 
 /*    init {
