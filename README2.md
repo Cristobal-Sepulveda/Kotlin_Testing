@@ -2087,6 +2087,7 @@ https://github.com/android/architecture-samples/tree/reactive
 
     2. Make new class in this source package called FakeAndroidTestRepository.kt.
 
+`TODO 7.1`
     3. Copy over the following code to that class:
 
               FakeAndroidTestRepository.kt
@@ -2212,6 +2213,7 @@ Step 2: Prepare your ServiceLocator for Tests
 
     1. Open ServiceLocator.kt.
 
+`TODO 7.2`
     2. Mark the setter for tasksRepository as @VisibleForTesting.
 
   ServiceLocator.kt
@@ -2230,7 +2232,7 @@ Step 2: Prepare your ServiceLocator for Tests
 
   ServiceLocator.kt
                 private val lock = Any()
-
+`TODO 7.4`
     4. Add a testing specific method called resetRepository which clears out
        the database and sets both the repository and database to null:
 
@@ -2260,6 +2262,7 @@ Step 3: Use your ServiceLocator
     3. Add a setup and tear down method which sets up a
        FakeAndroidTestRepository before each test and cleans it up after each test:
 
+`TODO 7.3`
   TaskDetailFragmentTest.kt
                   private lateinit var repository: TasksRepository
 
@@ -2268,7 +2271,7 @@ Step 3: Use your ServiceLocator
                       repository = FakeAndroidTestRepository()
                       ServiceLocator.tasksRepository = repository
                   }
-
+`TODO 7.5`
                   @After
                   fun cleanupDb() = runBlockingTest {
                       ServiceLocator.resetRepository()
@@ -2277,6 +2280,7 @@ Step 3: Use your ServiceLocator
     4. Wrap the function body of activeTaskDetails_DisplayedInUi() in
        runBlockingTest.
 
+`TODO 7.6`
     5. Save activeTask in the repository before launching the fragment.
 
                   repository.saveTask(activeTask)
