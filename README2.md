@@ -2385,7 +2385,7 @@ https://developer.android.com/reference/androidx/test/espresso/assertion/ViewAss
   Let's examine the full test.
 
     1. Open TaskDetailFragmentTest.kt.
-
+`TODO 8.2`
     2. Update the activeTaskDetails_DisplayedInUi test:
 
   TaskDetailFragmentTest.kt
