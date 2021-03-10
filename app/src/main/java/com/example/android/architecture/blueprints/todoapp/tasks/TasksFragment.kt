@@ -57,7 +57,8 @@ class TasksFragment : Fragment() {
     //TODO 6.4
 // WITH this code
     private val viewModel by viewModels<TasksViewModel> {
-        TasksViewModel.TasksViewModelFactory((requireContext().applicationContext as TodoApplication).taskRepository)
+        TasksViewModel.TasksViewModelFactory(
+                (requireContext().applicationContext as TodoApplication).taskRepository)
     }
 
 
@@ -70,7 +71,7 @@ class TasksFragment : Fragment() {
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?,
             savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         viewDataBinding = TasksFragBinding.inflate(inflater, container, false).apply {
             viewmodel = viewModel
         }

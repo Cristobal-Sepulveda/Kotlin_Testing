@@ -13,15 +13,16 @@ class FakeAndroidTestRepository: TasksRepository {
     private val observableTasks = MutableLiveData<Result<List<Task>>>()
 
     override suspend fun getTasks(forceUpdate: Boolean): Result<List<Task>> {
-        TODO("Not yet implemented")
+        return Result.Success(tasksServiceData.values.toList())
     }
 
     override suspend fun refreshTasks() {
-        TODO("Not yet implemented")
+        observableTasks.value = getTasks()
     }
 
     override fun observeTasks(): LiveData<Result<List<Task>>> {
-        TODO("Not yet implemented")
+        runBlocking { refreshTasks() }
+        return observableTasks
     }
 
     override suspend fun refreshTask(taskId: String) {

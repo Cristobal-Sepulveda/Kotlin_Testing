@@ -32,7 +32,7 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel for the Details screen.
  */
-class TaskDetailViewModel(application: Application) : ViewModel() {
+class TaskDetailViewModel(private val tasksRepository: TasksRepository) : ViewModel() {
 
 /*    // Note, for testing and architecture purposes, it's bad practice to construct the repository
     // here. We'll show you how to fix this during the codelab
@@ -41,7 +41,7 @@ class TaskDetailViewModel(application: Application) : ViewModel() {
     private val _taskId = MutableLiveData<String>()
 
     private val _task = _taskId.switchMap { taskId ->
-        tasksRepository!!.observeTask(taskId).map { computeResult(it) }
+        tasksRepository.observeTask(taskId).map { computeResult(it) }
     }
     val task: LiveData<Task?> = _task
 
@@ -81,7 +81,7 @@ class TaskDetailViewModel(application: Application) : ViewModel() {
             tasksRepository?.completeTask(task)
             showSnackbarMessage(R.string.task_marked_complete)
         } else {
-            tasksRepository?.activateTask(task)
+            tasksRepository.activateTask(task)
             showSnackbarMessage(R.string.task_marked_active)
         }
     }
@@ -92,7 +92,7 @@ class TaskDetailViewModel(application: Application) : ViewModel() {
             return
         }
         // Trigger the load
-        _taskId.value = taskId
+        _taskId.value = taskId!!
     }
 
     private fun computeResult(taskResult: Result<Task>): Task? {
@@ -125,6 +125,6 @@ class TaskDetailViewModel(application: Application) : ViewModel() {
             private val tasksRepository: TasksRepository
     ): ViewModelProvider.NewInstanceFactory(){
         override fun <T : ViewModel?> create(modelClass: Class<T>): T =
-                (TasksViewModel(tasksRepository) as T)
+                (TaskDetailViewModel(tasksRepository) as T)
     }
 }

@@ -43,6 +43,7 @@ import com.google.android.material.snackbar.Snackbar
 /**
  * Main UI for the task detail screen.
  */
+@Suppress("DEPRECATION")
 class TaskDetailFragment : Fragment() {
     private lateinit var viewDataBinding: TaskdetailFragBinding
 
@@ -55,7 +56,8 @@ class TaskDetailFragment : Fragment() {
     }*/
 // WITH this code
     private val viewModel by viewModels<TaskDetailViewModel> {
-        TaskDetailViewModel.TasksDetailViewModelFactory((requireContext().applicationContext as TodoApplication).taskRepository)
+        TaskDetailViewModel.TasksDetailViewModelFactory(
+                (requireContext().applicationContext as TodoApplication).taskRepository)
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
