@@ -105,8 +105,13 @@ dependencies {
 
     //TODO 5.2
     // Dependencies for Android instrumented unit tests
-    androidTestImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion"
+    androidTestImplementation "junit:junit:4.13.1"
+    androidTestImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.4.3"
+    //TODO 9.1
+    androidTestImplementation "org.mockito:mockito-core:$mockitoVersion"
+    androidTestImplementation "com.linkedin.dexmaker:dexmaker-mockito:$dexMakerVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-contrib:$espressoVersion"
+
     // Testing code should not be included in the main code.
     // Once https://issuetracker.google.com/128612536 is fixed this can be fixed.
     //the FragmentScenario API is part of this AndroidX.fragment-testing library
