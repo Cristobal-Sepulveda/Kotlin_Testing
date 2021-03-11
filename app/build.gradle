@@ -110,7 +110,7 @@ dependencies {
     // Testing code should not be included in the main code.
     // Once https://issuetracker.google.com/128612536 is fixed this can be fixed.
     //the FragmentScenario API is part of this AndroidX.fragment-testing library
-    implementation "androidx.fragment:fragment-testing:1.3.0"
+    debugImplementation "androidx.fragment:fragment-testing:1.3.0"
     implementation "androidx.test:core:1.3.0"
 
     //TODO 8.1
