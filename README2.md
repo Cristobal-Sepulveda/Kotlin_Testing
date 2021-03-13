@@ -2526,6 +2526,7 @@ https://site.mockito.org/
 
   Step 1: Add Gradle Dependencies
 
+`TODO 9.1`
     1. Add the gradle dependencies:
 
               app/build.gradle
@@ -2537,6 +2538,7 @@ https://site.mockito.org/
 
                   androidTestImplementation "androidx.test.espresso:espresso-contrib:$espressoVersion"
 
+`TODO 9.2`
   Step 2: Create TasksFragmentTest
 
     1. Open TasksFragment.
@@ -2567,6 +2569,7 @@ https://site.mockito.org/
 
               }
 
+`TODO 9.3`
     4. Add the test clickTask_navigateToDetailFragmentOne:
 
   TasksFragmentTest.kt
@@ -2580,6 +2583,7 @@ https://site.mockito.org/
 
               }
 
+`TODO 9.4`
     5. Use Mockito's mock function to create a mock:
 
   TasksFragmentTest.kt
@@ -2592,6 +2596,7 @@ https://site.mockito.org/
                   Navigation.setViewNavController(it.view!!, navController)
               }
 
+`TODO 9.5`
     7. Add the code to click on the item in the RecyclerView that has
        the text "TITLE1":
 
@@ -2604,7 +2609,7 @@ https://site.mockito.org/
             RecyclerViewActions is part of the espresso-contrib library and
             lets you perform Espresso actions on a RecyclerView.
 https://developer.android.com/training/testing/espresso/lists#recycler-view-list-items
-
+`TODO 9.5`
     8. Verify that navigate was called, with the correct argument:
 
             TasksFragmentTest.kt

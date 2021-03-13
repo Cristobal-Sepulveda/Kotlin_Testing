@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.testing.FragmentScenario
+import androidx.fragment.app.testing.FragmentScenario.FragmentAction
 import androidx.fragment.app.testing.launchFragmentInContainer
 import androidx.navigation.NavController
 import androidx.navigation.Navigation
@@ -57,8 +58,8 @@ import org.mockito.Mockito.verify
         val scenario = launchFragmentInContainer<TasksFragment>(Bundle(), R.style.AppTheme)
         //TODO 9.4
         val navController = mock(NavController::class.java)
-        scenario.onFragment(FragmentScenario.FragmentAction { Navigation.setViewNavController(
-                it.view!!,navController)})
+        scenario.onFragment(FragmentAction<TasksFragment> {
+            Navigation.setViewNavController(it.view!!,navController)})
 
         //TODO 9.5
         // WHEN - Click on the first list item
@@ -71,24 +72,5 @@ import org.mockito.Mockito.verify
         verify(navController).navigate(
                 TasksFragmentDirections.actionTasksFragmentToTaskDetailFragment( "id1"))
 
-    }
-    @Test
-    fun clickAddTaskButton_navigateToAddEditFragment2() {
-        // GIVEN - On the home screen
-        val scenario = launchFragmentInContainer<TasksFragment>(Bundle(), R.style.AppTheme)
-        val navController = mock(NavController::class.java)
-        scenario.onFragment(FragmentScenario.FragmentAction<TasksFragment>) {
-            Navigation.setViewNavController(it.view!!, navController)
-        }
-
-        // WHEN - Click on the "+" button
-        onView(withId(R.id.add_task_fab)).perform(click())
-
-        // THEN - Verify that we navigate to the add screen
-        verify(navController).navigate(
-                TasksFragmentDirections.actionTasksFragmentToAddEditTaskFragment(
-                        null, getApplicationContext<Context>().getString(R.string.add_task)
-                )
-        )
     }
 }
