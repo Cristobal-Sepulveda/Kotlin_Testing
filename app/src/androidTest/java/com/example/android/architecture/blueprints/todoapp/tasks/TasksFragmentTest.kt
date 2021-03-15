@@ -38,6 +38,7 @@ import org.mockito.Mockito.verify
   class TasksFragmentTest {
 
     private lateinit var repository: TasksRepository
+
     @Before
     fun initRepository() {
         repository = FakeAndroidTestRepository()
@@ -52,14 +53,15 @@ import org.mockito.Mockito.verify
     //TODO 9.3
     @Test
     fun clickTask_navigateToDetailFragmentOne() = runBlockingTest {
+
         // GIVEN - On the tasks screen with two tasks
         repository.saveTask(Task("TITLE1", "DESCRIPTION1", false, "id1"))
         repository.saveTask(Task("TITLE2", "DESCRIPTION2", true, "id2"))
         val scenario = launchFragmentInContainer<TasksFragment>(Bundle(), R.style.AppTheme)
         //TODO 9.4
         val navController = mock(NavController::class.java)
-        scenario.onFragment(FragmentAction<TasksFragment> {
-            Navigation.setViewNavController(it.view!!,navController)})
+        scenario.onFragment {
+            Navigation.setViewNavController(it.view!!,navController)}
 
         //TODO 9.5
         // WHEN - Click on the first list item
@@ -71,6 +73,5 @@ import org.mockito.Mockito.verify
         // THEN - Verify that we navigate to the first detail screen
         verify(navController).navigate(
                 TasksFragmentDirections.actionTasksFragmentToTaskDetailFragment( "id1"))
-
     }
 }
