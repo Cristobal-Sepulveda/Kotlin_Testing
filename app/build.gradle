@@ -112,6 +112,8 @@ dependencies {
     androidTestImplementation "com.linkedin.dexmaker:dexmaker-mockito:$dexMakerVersion"
     androidTestImplementation "androidx.test.espresso:espresso-contrib:$espressoVersion"
 
+    //TODO 10.17
+    androidTestImplementation "androidx.arch.core:core-testing:$archTestingVersion"
     // Testing code should not be included in the main code.
     // Once https://issuetracker.google.com/128612536 is fixed this can be fixed.
     //the FragmentScenario API is part of this AndroidX.fragment-testing library

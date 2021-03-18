@@ -1118,6 +1118,194 @@ ________________________________________________________________________________
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ________________________________________________________________________________
                           CODELAB: PART 2
           TESTING: Intro to Test Doubles & Dependency Injection
@@ -2700,3 +2888,1507 @@ The answer is:
                   )
               )
           }
+
+________________________________________________________________________________
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+________________________________________________________________________________
+
+                              LESSON 5
+                    Testing: Survey of Advanced Topics
+
+      Learning how to Navigation Testing, Coroutines, Room, Databinding,
+                      and End to End Tests.
+________________________________________________________________________________
+
+
+
+________________________________________________________________________________
+
+            3. Code Checkpoint: viewModelScope and TestCoroutineDispatcher
+________________________________________________________________________________
+
+
+  In this step you'll write a test for code that uses viewModelScope - you'll
+  write a test that checks that when a task is completed, the snackbar shows
+  the correct message. To complete this test, you'll need to swap the default
+  Dispatchers.Main for a TestCoroutineDispatcher.
+
+  If you're curious, you can learn more about viewModelScope in the blogpost
+  Easy Coroutines in Android: viewModelScope.
+
+https://medium.com/androiddevelopers/easy-coroutines-in-android-viewmodelscope-25bffb605471
+
+Optional Step: Download the Code (Code Checkpoint)
+
+  If you haven't been following along or want to download the code up to this
+  point, you can do so now. Download the code here, download a zip of the code
+  here, OR you can clone the Github repository for the code:
+
+              $ git clone https://github.com/udacity/android-testing.git
+              $ cd android-architecture
+              $ git checkout end_codelab_2
+
+Step 1: Observe the Issue
+
+  Start by adding the new completeTask_dataAndSnackbarUpdated test.
+
+    1. Open test > tasks > TasksViewModelTest
+
+`TODO 10.1`
+    2. Add this new test method:
+
+    TasksViewModelTest.kt
+
+              @Test
+              fun completeTask_dataAndSnackbarUpdated() {
+                  // Create an active task and add it to the repository.
+                  val task = Task("Title", "Description")
+                  tasksRepository.addTasks(task)
+
+                  // Mark the task as complete task.
+                  tasksViewModel.completeTask(task, true)
+
+                  // Verify the task is completed.
+                 assertThat(tasksRepository.tasksServiceData[task.id]?.isCompleted, `is`(true))
+
+                  // Assert that the snackbar has been updated with the correct text.
+                  val snackbarText: Event<Int> =  tasksViewModel.snackbarText.getOrAwaitValue()
+                  assertThat(snackbarText.getContentIfNotHandled(), `is`(R.string.task_marked_complete))
+              }
+
+    3. Run this new test. You should observe that it fails with the following error:
+
+  "Exception in thread "main" java.lang.IllegalStateException: Module with
+  the Main dispatcher had failed to initialize. For tests Dispatchers.setMain
+  from kotlinx-coroutines-test module can be used."
+
+`TODO 10.2`
+Step 2: Replace Dispatcher.Main with TestCoroutineDispatcher
+
+    1. In TasksViewModelTest, create a TestCoroutineDispatcher as a val
+       called testDispatcher.
+
+  Swap this testDispatcher in exchange for the standard Main dispatcher.
+
+    2. Create a @Before method that calls Dispatchers.setMain(testDispatcher)
+       before every test.
+
+    3. Create an @After method that cleans everything up after running each
+       test by calling Dispatchers.resetMain() and
+       then testDispatcher.cleanupTestCoroutines().
+
+  Here's what this code looks like:
+
+    TasksViewModelTest.kt
+
+              @ExperimentalCoroutinesApi
+              val testDispatcher: TestCoroutineDispatcher = TestCoroutineDispatcher()
+
+              @ExperimentalCoroutinesApi
+              @Before
+              fun setupDispatcher() {
+                  Dispatchers.setMain(testDispatcher)
+              }
+
+              @ExperimentalCoroutinesApi
+              @After
+              fun tearDownDispatcher() {
+                  Dispatchers.resetMain()
+                  testDispatcher.cleanupTestCoroutines()
+              }
+
+    4. Run your test again. It should now pass! Good work!
+
+________________________________________________________________________________
+
+
+
+
+
+________________________________________________________________________________
+
+              4. MainCoroutineRule and Injecting Dispatchers
+
+________________________________________________________________________________
+
+
+  In this step you'll create the MainCoroutineRule JUnit rule and use it in
+  TasksViewModelTest and DefaultTasksRepositoryTest.
+https://junit.org/junit4/javadoc/4.12/org/junit/Rule.html
+
+Step 1: Add MainCoroutineRule
+
+    1. Create a new class called MainCoroutineRule.kt in the root folder of the test source set.
+
+`TODO 10.3`
+    2. Copy over the following code toMainCoroutineRule.kt:
+
+    MainCoroutineRule.kt
+
+              @ExperimentalCoroutinesApi
+              class MainCoroutineRule(val dispatcher: TestCoroutineDispatcher = TestCoroutineDispatcher()):
+                 TestWatcher(),
+                 TestCoroutineScope by TestCoroutineScope(dispatcher) {
+                 override fun starting(description: Description?) {
+                     super.starting(description)
+                     Dispatchers.setMain(dispatcher)
+                 }
+
+                 override fun finished(description: Description?) {
+                     super.finished(description)
+                     cleanupTestCoroutines()
+                     Dispatchers.resetMain()
+                 }
+              }
+
+Step 2: Use MainCoroutineRule in TasksViewModelTest
+
+  Now use your new rule.
+
+    1. Open TasksViewModelTest.
+
+`TODO 10.4`
+    2. Replace TestDispatcher code you just wrote (the @Before and @After code
+       to swap and cleanup the dispatcher) with code to use your
+       new MainCoroutineRule:
+
+    TasksViewModelTest.kt
+
+            // REPLACE
+            @ExperimentalCoroutinesApi
+            val testDispatcher: TestCoroutineDispatcher = TestCoroutineDispatcher()
+
+            @ExperimentalCoroutinesApi
+            @Before
+            fun setupDispatcher() {
+                Dispatchers.setMain(testDispatcher)
+            }
+
+            @ExperimentalCoroutinesApi
+            @After
+            fun tearDownDispatcher() {
+                Dispatchers.resetMain()
+                testDispatcher.cleanupTestCoroutines()
+            }
+
+
+            // WITH
+            @ExperimentalCoroutinesApi
+            @get:Rule
+            var mainCoroutineRule = MainCoroutineRule()
+
+    3. Run completeTask_dataAndSnackbarUpdated, it should work exactly the same!
+
+Step 3: Use MainCoroutineRule for repository testing.
+
+  You can also use this rule in DefaultTasksRepositoryTest.
+
+    1. Open up test > data > source > DefaultTasksRepositoryTest.kt
+
+`TODO 10.5`
+    2. Add the MainCoroutineRule inside of the DefaultTasksRepositoryTest class:
+
+      DefaultTasksRepositoryTest.kt
+
+            // Set the main coroutines dispatcher for unit testing.
+            @ExperimentalCoroutinesApi
+            @get:Rule
+            var mainCoroutineRule = MainCoroutineRule()
+
+  Remember that MainCoroutineRule swaps the Dispatcher.Main for
+  a TestCoroutineDispatcher.
+
+`TODO 10.6`
+    3. Use Dispatcher.Main, instead of Dispatcher.Unconfined when defining
+       your repository under test:
+
+    DefaultTasksRepositoryTest.kt
+
+            @Before
+            fun createRepository() {
+                tasksRemoteDataSource = FakeDataSource(remoteTasks.toMutableList())
+                tasksLocalDataSource = FakeDataSource(localTasks.toMutableList())
+                // Get a reference to the class under test.
+                tasksRepository = DefaultTasksRepository(
+                // HERE Swap Dispatcher.Unconfined
+                    tasksRemoteDataSource, tasksLocalDataSource, Dispatchers.Main
+                )
+            }
+
+  Generally, only create one TestCoroutineDispatcher to run a test.
+  Whenever you call runBlockingTest, it will create a new
+  TestCoroutineDispatcher if you don't specify one. MainCoroutineRule
+  includes a TestCoroutineDispatcher. So, to ensure that you don't
+  accidentally create multiple instances of TestCoroutineDispatcher, use
+  the mainCoroutineRule.runBlockingTest instead of just runBlockingTest.
+
+https://www.youtube.com/watch?v=KMb0Fs8rCRs&t=747s&ab_channel=AndroidDevelopers
+`TODO 10.7`
+    4. Replace runBlockingTest with mainCoroutineRule.runBlockingTest:
+
+    DefaultTasksRepositoryTest.kt
+
+            // REPLACE
+            fun getTasks_requestsAllTasksFromRemoteDataSource() = runBlockingTest {
+
+            // WITH
+            fun getTasks_requestsAllTasksFromRemoteDataSource() = mainCoroutineRule.runBlockingTest {
+
+    5. Run your DefaultTasksRepositoryTest class and confirm everything
+       works as before!
+
+  Awesome job! Now you're using TestCoroutineDispatcher in your code, which is
+  a preferable dispatcher for testing. Next you'll see how to use an
+  additional feature of the TestCoroutineDispatcher, controlling coroutine
+  execution timing.
+
+  MainCoroutineRule and many of the other concepts covered here are explained
+  in detail in the talk Testing Coroutines on Android.
+
+https://www.youtube.com/watch?v=KMb0Fs8rCRs&ab_channel=AndroidDevelopers
+
+
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                          5. StatisticsViewModelTest
+________________________________________________________________________________
+
+
+  In the next step, you'll be writing tests for the StatisticViewModel. As a
+  reminder, the StatisticViewModel holds all the data and does all of the
+  calculations for the Statistics Screen:
+
+https://video.udacity-data.com/topher/2020/January/5e31b0fc_5.statsviewmodeltest/5.statsviewmodeltest.png
+
+
+  To set things up for testing the StatisticViewModel, you'll need
+  to make two code changes:
+
+    1. Update StatisticViewModel so that you can inject the fake repository.
+       This is a review of what you did in 5.2 Testing: Intro to Test Doubles
+       when you used the fake repository.
+
+    2. Do the standard test setup for StatisticViewModelTest.
+
+  Both of these are review and unrelated to coroutine timing, so feel free to copy/paste.
+
+Step 1: Update StatisticsViewModel for Dependency Injection
+
+    1. Open StatisticsViewModel.
+
+`TODO 10.8`
+    2. Change the constructor of StatisticsViewModel to take in TasksRepository
+       instead of constructing it inside the class, so that you can inject a
+       fake repository for testing:
+
+    StatisticsViewModel.kt
+
+            // REPLACE
+            class StatisticsViewModel(application: Application) : AndroidViewModel(application) {
+
+                private val tasksRepository = (application as TodoApplication).taskRepository
+
+                // Rest of class
+            }
+
+            // WITH
+
+            class StatisticsViewModel(
+                private val tasksRepository: TasksRepository
+            ) : ViewModel() {
+                // Rest of class
+            }
+
+`TODO 10.9`
+    3. At the bottom of the StatisticsViewModel file, outside the class, add a
+       TasksViewModelFactory which takes in a plain TasksRepository:
+
+    StatisticsViewModel.kt
+
+            @Suppress("UNCHECKED_CAST")
+            class StatisticsViewModelFactory (
+                private val tasksRepository: TasksRepository
+            ) : ViewModelProvider.NewInstanceFactory() {
+                override fun <T : ViewModel> create(modelClass: Class<T>) =
+                    (StatisticsViewModel(tasksRepository) as T)
+            }
+
+`TODO 10.10`
+    4. Update StatisticsFragment to use the factory.
+
+    StatisticsFragment.kt
+
+            // REPLACE
+            private val viewModel by viewModels<TasksViewModel>()
+
+            // WITH
+
+            private val viewModel by viewModels<StatisticsViewModel> {
+                StatisticsViewModelFactory(
+                    (requireContext().applicationContext as TodoApplication).taskRepository
+                )
+            }
+
+    5. Run your application code and navigate to the StatisticsFragment to make
+       sure your statistics screen works just like before.
+
+Step 2: Create StatisticsViewModelTest
+
+    1. Open StatisticsViewModel.kt.
+
+    2. Right-click on the StatisticsViewModel class name and select Generate, then Test.
+
+    3. Follow the prompts to create StatisticsViewModelTest in the test source set.
+
+`TODO 10.11`
+  Follow the steps below to set up your StatisticsViewModel test as you've done
+  previously. This is a good review of what goes into a view model test:
+
+    4. Add the InstantTaskExecutorRule since you are testing Architecture Components.
+
+    5. Add the MainCoroutineRule since you are testing coroutines and view models.
+
+    6. Create fields for the subject under test (StatisticsViewModel) and test
+       doubles for its dependencies (FakeTestRepository).
+
+    7. Create a @Before method that sets up the subject under test and dependencies.
+
+  Your test should look like this:
+
+    StatisticsViewModelTest.kt
+
+              @ExperimentalCoroutinesApi
+              class StatisticsViewModelTest {
+
+                  // Executes each task synchronously using Architecture Components.
+                  @get:Rule
+                  var instantExecutorRule = InstantTaskExecutorRule()
+
+                  // Set the main coroutines dispatcher for unit testing.
+                  @ExperimentalCoroutinesApi
+                  @get:Rule
+                  var mainCoroutineRule = MainCoroutineRule()
+
+                  // Subject under test
+                  private lateinit var statisticsViewModel: StatisticsViewModel
+
+                  // Use a fake repository to be injected into the view model.
+                  private lateinit var tasksRepository: FakeTestRepository
+
+                  @Before
+                  fun setupStatisticsViewModel() {
+                      // Initialise the repository with no tasks.
+                      tasksRepository = FakeTestRepository()
+
+                      statisticsViewModel = StatisticsViewModel(tasksRepository)
+                  }
+              }
+
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                      6. Testing Coroutine Timing
+________________________________________________________________________________
+
+
+  In this step you'll use TestCouroutineDispatcher's pauseDispatcher and
+  resumeDispatcher methods. Using these methods, you'll write a test that
+  makes sure the loading indicator is shown when the statistics are
+  loading, and then disappears once the statistics are loaded.
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-test/kotlinx.coroutines.test/-delay-controller/pause-dispatcher.html
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-test/kotlinx.coroutines.test/-delay-controller/resume-dispatcher.html
+
+`TODO 10.12`
+Step 1: Create a loading indicator test
+
+  Copy the code below and run the test. This test fails.
+
+    StatisticsViewModelTest.kt
+            @Test
+            fun loadTasks_loading() {
+
+                // Load the task in the view model.
+                statisticsViewModel.refresh()
+
+                // Then progress indicator is shown.
+                assertThat(statisticsViewModel.dataLoading.getOrAwaitValue(), `is`(true))
+
+                // Then progress indicator is hidden.
+                assertThat(statisticsViewModel.dataLoading.getOrAwaitValue(), `is`(false))
+            }
+
+  The test above doesn't really make sense because it's testing that
+  dataLoading is both true and false at the same time.
+
+    2. Look at the failure and see that the test fails because of the first assert statement.
+
+  This test fails because the entire refresh() method completes before the
+  loading indicator assert statements are made.
+`TODO 10.12`
+Step 2: Pause and Resume the dispatcher
+
+    1. Update the test to use pauseDispatcher and resumeDispatcher so that
+       you pause before executing the coroutine, check that the loading
+       indicator is shown, then resume and check that the load is gone:
+
+    StatisticsViewModelTest.kt
+            @Test
+            fun loadTasks_loading() {
+                // Pause dispatcher so you can verify initial values.
+                mainCoroutineRule.pauseDispatcher()
+
+                // Load the task in the view model.
+                statisticsViewModel.refresh()
+
+                // Then assert that the progress indicator is shown.
+                assertThat(statisticsViewModel.dataLoading.getOrAwaitValue(), `is`(true))
+
+                // Execute pending coroutines actions.
+                mainCoroutineRule.resumeDispatcher()
+
+                // Then assert that the progress indicator is hidden.
+                assertThat(statisticsViewModel.dataLoading.getOrAwaitValue(), `is`(false))
+            }
+
+    2. Run the test and see that it passes now.
+
+  If you need even more fine-grained timing control, TestCouroutineDispatcher
+  provides that as well. Check out:
+
+    * advanceTimeBy
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-test/kotlinx.coroutines.test/-delay-controller/advance-time-by.html
+    * advanceUntilIdle
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-test/kotlinx.coroutines.test/-delay-controller/advance-until-idle.html
+    * runCurrent
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-test/kotlinx.coroutines.test/-delay-controller/run-current.html
+
+  Excellent - you've learned how to write coroutine tests that use
+  TestCoroutineDispatcher's ability to pause and resume coroutine execution.
+  This gives you more control when writing tests that require precise timing.
+
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                          7. Testing Error Handling
+________________________________________________________________________________
+
+  In this step you'll test your application reacts appropriately when
+  there's an error (such as data being unavailable from the network).
+
+Step 1: Add an error flag to test double
+
+    1. Open test > data > source > FakeTestRepository.
+
+`TODO 10.13`
+    2. Add a boolean flag called shouldReturnError and set it initially
+       to false, which means that by default an error is not returned.
+
+    FakeTestRepository.kt
+            private var shouldReturnError = false
+
+`TODO 10.14`
+    3. Create a setReturnError method that changes whether or not
+       the repository should return errors:
+
+    FakeTestRepository.kt
+            fun setReturnError(value: Boolean) {
+                shouldReturnError = value
+            }
+
+`TODO 10.15`
+    4. Wrap getTask and getTasks in if statements so that if
+       shouldReturnError is true, the method returns Result.Error:
+
+    FakeTestRepository.kt
+              override suspend fun getTask(taskId: String, forceUpdate: Boolean): Result<Task> {
+                  if (shouldReturnError) {
+                      return Error(Exception("Test exception"))
+                  }
+                  tasksServiceData[taskId]?.let {
+                      return Success(it)
+                  }
+                  return Error(Exception("Could not find task"))
+              }
+
+              override suspend fun getTasks(forceUpdate: Boolean): Result<List<Task>> {
+                  if (shouldReturnError) {
+                      return Error(Exception("Test exception"))
+                  }
+                  return Success(tasksServiceData.values.toList())
+              }
+
+Step 2: Write a test for returned Error
+
+  In StatisticsViewModel, there are two LiveData booleans (error and empty):
+
+    StatisticsViewModel.kt
+              class StatisticsViewModel(
+                  private val tasksRepository: TasksRepository
+              ) : ViewModel() {
+
+                  private val tasks: LiveData<Result<List<Task>>> = tasksRepository.observeTasks()
+
+                  // Other variables...    
+
+                  val error: LiveData<Boolean> = tasks.map { it is Error }
+                  val empty: LiveData<Boolean> = tasks.map { (it as? Success)?.data.isNullOrEmpty() }
+
+                  // Rest of the code...    
+              }
+
+  These represent whether or not tasks loaded properly. If there is
+  an error, error and empty should both be true.
+
+    1. Open StatisticsViewModelTest.
+
+    2. Create a new test called loadStatisticsWhenTasksAreUnavailable_callErrorToDisplay
+
+    3. Call setReturnErrors() on tasksRepository, setting it to true.
+
+    4. Call statisticsViewModel.refresh() to trigger a data load.
+
+    5. Check that statisticsViewModel.empty and statisticsViewModel.error are both true.
+
+`TODO 10.16`
+  The full code for this test is below:
+
+    StatisticsViewModelTest.kt
+            @Test
+            fun loadStatisticsWhenTasksAreUnavailable_callErrorToDisplay() {
+                // Make the repository return errors.
+                tasksRepository.setReturnError(true)
+                statisticsViewModel.refresh()
+
+                // Then empty and error are true (which triggers an error message to be shown).
+                assertThat(statisticsViewModel.empty.getOrAwaitValue(), `is`(true))
+                assertThat(statisticsViewModel.error.getOrAwaitValue(), `is`(true))
+            }
+
+    6. Run your test and observe it passing!
+
+________________________________________________________________________________
+
+
+
+________________________________________________________________________________
+
+                          8. Testing Room
+________________________________________________________________________________
+
+  In this step you'll write tests for your Room database's DAO.
+
+`TODO 10.17`
+Step 1: Add the architecture component testing library to gradle
+
+    1. Add the architecture component testing library to your instrumented
+       tests, using androidTestImplementation:
+
+    app/build.gradle
+            androidTestImplementation "androidx.arch.core:core-testing:$archTestingVersion"
+
+Step 2: Create the TasksDaoTest class
+
+    1. In your project pane, navigate to androidTest > data > source.
+
+    2. Right-click on the source package and create a new package called local.
+
+    3. In local, create a Kotlin file and class called TasksDaoTest.kt.
+
+https://video.udacity-data.com/topher/2020/January/5e31b0fc_8.testingroom/8.testingroom.png
+
+Step 3: Set up the TasksDaoTest class
+
+`TODO 10.18`
+    1. Copy the following code to start your TasksDaoTest class:
+
+    TasksDaoTest.kt
+            @ExperimentalCoroutinesApi
+            @RunWith(AndroidJUnit4::class)
+            @SmallTest
+            class TasksDaoTest {
+
+                // Executes each task synchronously using Architecture Components.
+                @get:Rule
+                var instantExecutorRule = InstantTaskExecutorRule()
+
+            }
+
+    2. In TasksDaoTest, create a lateinit field for your database:
+
+    TasksDaoTest.kt
+            private lateinit var database: ToDoDatabase
+
+    3. Make a @Before method for initializing your database:
+
+    TasksDaoTest.kt
+            @Before
+            fun initDb() {
+                // Using an in-memory database so that the information stored here disappears when the
+                // process is killed.
+                database = Room.inMemoryDatabaseBuilder(
+                    getApplicationContext(),
+                    ToDoDatabase::class.java
+                ).build()
+            }
+
+    4. Make an @After method for cleaning up your database using database.close():
+
+    TasksDaoTest.kt
+            @After
+            fun closeDb() = database.close()
+
+  Once done, your code should look like:
+
+    TasksDaoTest.kt
+            @ExperimentalCoroutinesApi
+            @RunWith(AndroidJUnit4::class)
+            @SmallTest
+            class TasksDaoTest {
+
+                // Executes each task synchronously using Architecture Components.
+                @get:Rule
+                var instantExecutorRule = InstantTaskExecutorRule()
+
+
+                private lateinit var database: ToDoDatabase
+
+                @Before
+                fun initDb() {
+                    // Using an in-memory database so that the information stored here disappears when the
+                    // process is killed.
+                    database = Room.inMemoryDatabaseBuilder(
+                        getApplicationContext(),
+                        ToDoDatabase::class.java
+                    ).allowMainThreadQueries().build()
+                }
+
+                @After
+                fun closeDb() = database.close()
+
+            }
+Step 4: Write your first DAO test
+
+  Your first DAO test will insert a task and then get the task by its id.
+
+    1. Still in TasksDaoTest, copy the following test:
+
+`TODO 10.19`
+    TasksDaoTest.kt
+              @Test
+              fun insertTaskAndGetById() = runBlockingTest {
+                  // GIVEN - Insert a task.
+                  val task = Task("title", "description")
+                  database.taskDao().insertTask(task)
+
+                  // WHEN - Get the task by id from the database.
+                  val loaded = database.taskDao().getTaskById(task.id)
+
+                  // THEN - The loaded data contains the expected values.
+                  assertThat<Task>(loaded as Task, notNullValue())
+                  assertThat(loaded.id, `is`(task.id))
+                  assertThat(loaded.title, `is`(task.title))
+                  assertThat(loaded.description, `is`(task.description))
+                  assertThat(loaded.isCompleted, `is`(task.isCompleted))
+              }
+
+  If needed, here are the imports:
+
+    TasksDaoTest.kt
+            import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+            import androidx.room.Room
+            import androidx.test.core.app.ApplicationProvider.getApplicationContext
+            import androidx.test.ext.junit.runners.AndroidJUnit4
+            import androidx.test.filters.SmallTest
+            import com.example.android.architecture.blueprints.todoapp.data.Task
+            import kotlinx.coroutines.ExperimentalCoroutinesApi
+            import kotlinx.coroutines.test.runBlockingTest
+            import org.hamcrest.CoreMatchers.`is`
+            import org.hamcrest.CoreMatchers.notNullValue
+            import org.hamcrest.MatcherAssert.assertThat
+            import org.junit.After
+            import org.junit.Before
+            import org.junit.Rule
+            import org.junit.Test
+            import org.junit.runner.RunWith
+
+    2. Run your test and confirm that it passes.
+
+Step 5: Try it yourself!
+
+  Now try writing a DAO test yourself. Write a test that inserts
+  a task, updates it, and then checks that it has the updated values.
+  Below is starter code for updateTaskAndGetById.
+
+    1. Copy this test starter code:
+
+    TasksDaoTest.kt
+            @Test
+            fun updateTaskAndGetById() {
+                // 1. Insert a task into the DAO.
+
+                // 2. Update the task by creating a new task with the same ID but different attributes.
+
+                // 3. Check that when you get the task by its ID, it has the updated values.
+            }
+
+    2. Finish the code, referring to the insertTaskAndGetById test you just added.
+
+    3. Run your test and confirm it passes!
+
+  The completed test is in the end_codelab_3 branch of the repository here, so that you can compare.
+  https://github.com/udacity/android-testing/blob/end_codelab_3/app/src/androidTest/java/com/example/android/architecture/blueprints/todoapp/data/source/local/TasksDaoTest.kt
+
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                        9. Testing Local Data Source
+________________________________________________________________________________
+
+  You just created unit tests for your TasksDao. In this step, you'll create
+  integration tests for your TasksLocalDataSource. TasksLocalDatasource
+  is a class that takes the information returned by the DAO and converts
+  it to a format that is expected by your repository class
+  (for example, it wraps returned values with Success or Error states).
+  You'll be writing an integration test because you'll test both the
+  real TasksLocalDatasource code and the real DAO code.
+
+Step 1: Create an integration test for TasksLocalDataSource
+
+  The steps for creating tests for your TasksLocalDataSourceTest are
+  very similar to creating the DAO tests.
+
+    1. Open your app's TasksLocalDataSource class.
+
+    2. Right-click on the TasksLocalDataSource class name and select Generate, then Test.
+
+    3. Follow the prompts to create TasksLocalDataSourceTest in the androidTest source set.
+
+    4. Copy the following code:
+
+    TasksLocalDataSourceTest.kt
+              @ExperimentalCoroutinesApi
+              @RunWith(AndroidJUnit4::class)
+              @MediumTest
+              class TasksLocalDataSourceTest {
+
+                  // Executes each task synchronously using Architecture Components.
+                  @get:Rule
+                  var instantExecutorRule = InstantTaskExecutorRule()
+              }
+
+  Notice that the only real difference between this and the DAO testing
+  code is that the TasksLocalDataSource can be considered a medium
+  "integration" test (as seen by the @MediumTest annotation), because the
+  TasksLocalDataSourceTest will test both the code in TasksLocalDataSource
+  and how it integrates with the DAO code.
+
+    5. In TasksLocalDataSourceTest, create a lateinit field for the two
+       components you're testing–- TasksLocalDataSource and your database:
+
+    TasksLocalDataSourceTest.kt
+
+          private lateinit var localDataSource: TasksLocalDataSource
+          private lateinit var database: ToDoDatabase
+
+    6. Make a @Before method for initializing your database and datasource.
+
+    7. Create your database in the same way you did for your DAO test, using
+       the inMemoryDatabaseBuilder and the
+       ApplicationProvider.getApplicationContext() method
+
+    8. Add allowMainThreadQueries. Normally Room doesn't allow database
+       queries to be run on the main thread. Calling allowMainThreadQueries
+       turns off this check. Don't do this in production code!
+
+https://developer.android.com/reference/androidx/room/RoomDatabase.Builder.html#allowMainThreadQueries%28%29
+
+    9. Instantiate the TasksLocalDataSource, using your database and
+       Dispatchers.Main. This will run your queries on the main
+       thread (this is allowed because of allowMainThreadQueries).
+
+    TasksLocalDataSourceTest.kt
+              @Before
+              fun setup() {
+                  // Using an in-memory database for testing, because it doesn't survive killing the process.
+                  database = Room.inMemoryDatabaseBuilder(
+                      ApplicationProvider.getApplicationContext(),
+                      ToDoDatabase::class.java
+                  )
+                      .allowMainThreadQueries()
+                      .build()
+
+                  localDataSource =
+                      TasksLocalDataSource(
+                          database.taskDao(),
+                          Dispatchers.Main
+                      )
+              }
+    10. Make an @After method for cleaning up your database using database.close().
+
+  The complete code should look like this:
+
+    TasksLocalDataSourceTest.kt
+            @ExperimentalCoroutinesApi
+            @RunWith(AndroidJUnit4::class)
+            @MediumTest
+            class TasksLocalDataSourceTest {
+
+                private lateinit var localDataSource: TasksLocalDataSource
+                private lateinit var database: ToDoDatabase
+
+
+                // Executes each task synchronously using Architecture Components.
+                @get:Rule
+                var instantExecutorRule = InstantTaskExecutorRule()
+
+                @Before
+                fun setup() {
+                    // Using an in-memory database for testing, because it doesn't survive killing the process.
+                    database = Room.inMemoryDatabaseBuilder(
+                        ApplicationProvider.getApplicationContext(),
+                        ToDoDatabase::class.java
+                    )
+                        .allowMainThreadQueries()
+                        .build()
+
+                    localDataSource =
+                        TasksLocalDataSource(
+                            database.taskDao(),
+                            Dispatchers.Main
+                        )
+                }
+
+                @After
+                fun cleanUp() {
+                    database.close()
+                }
+
+            }
+Step 2: Write your first TasksLocalDataSourceTest
+
+  Let's copy and run an example test first.
+
+    1. Copy these import statements:
+
+            import com.example.android.architecture.blueprints.todoapp.data.source.TasksDataSource
+            import com.example.android.architecture.blueprints.todoapp.data.Result.Success
+            import com.example.android.architecture.blueprints.todoapp.data.Task
+            import com.example.android.architecture.blueprints.todoapp.data.succeeded
+            import kotlinx.coroutines.runBlocking
+            import org.hamcrest.CoreMatchers.`is`
+            import org.junit.Assert.assertThat
+            import org.junit.Test
+
+    2. Copy this test:
+
+    TasksLocalDataSourceTest.kt
+            // runBlocking is used here because of https://github.com/Kotlin/kotlinx.coroutines/issues/1204
+            // TODO: Replace with runBlockingTest once issue is resolved
+            @Test
+            fun saveTask_retrievesTask() = runBlocking {
+                // GIVEN - A new task saved in the database.
+                val newTask = Task("title", "description", false)
+                localDataSource.saveTask(newTask)
+
+                // WHEN  - Task retrieved by ID.
+                val result = localDataSource.getTask(newTask.id)
+
+                // THEN - Same task is returned.
+                assertThat(result.succeeded, `is`(true))
+                result as Success
+                assertThat(result.data.title, `is`("title"))
+                assertThat(result.data.description, `is`("description"))
+                assertThat(result.data.isCompleted, `is`(false))
+            }
+
+  This is very similar to your DAO test. Like the DAO test, this test:
+
+    * Creates a task and inserts it into the database.
+
+    * Retrieves the task using its id.
+
+    * Asserts that that task was retrieved, and that all its properties
+      match the inserted task.
+
+  The only real difference from the analogous DAO test is that the local
+  data source returns an instance of the sealed Result class, which is
+  the format the repository expects. For example, this line here casts
+  the result as a Success:
+
+    TasksLocalDataSourceTest.kt
+
+            assertThat(result.succeeded, `is`(true))
+            result as Success
+
+    3. Run your test!
+
+Step 3: Write your own local data source test
+
+  Now it's your turn.
+
+    1. Copy the following code:
+
+  TasksLocalDataSourceTest.kt
+            @Test
+            fun completeTask_retrievedTaskIsComplete(){
+                // 1. Save a new active task in the local data source.
+
+                // 2. Mark it as complete.
+
+                // 3. Check that the task can be retrieved from the local data source and is complete.
+
+            }
+
+    2. Finish the code, referring to the saveTask_retrievesTask test you added previously, as needed.
+
+    3. Run your test and confirm it passes!
+
+The completed test is in the end_codelab_3 branch of the repository here, so that you can compare.
+https://github.com/udacity/android-testing/blob/end_codelab_3/app/src/androidTest/java/com/example/android/architecture/blueprints/todoapp/data/source/local/TasksLocalDataSourceTest.kt
+https://github.com/udacity/android-testing/tree/end_codelab_3
+
+
+________________________________________________________________________________
+
+________________________________________________________________________________
+
+                  10. Idling Resources and End-to-End Testing
+________________________________________________________________________________
+
+                              NOTHING HERE
+                              NOTHING HERE
+                              NOTHING HERE
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                    11. Counting Idling Resource
+________________________________________________________________________________
+
+  In this step, you'll create an Espresso idling resources to act as a
+  synchronization mechanism for Espresso and your long running operations.
+https://developer.android.com/training/testing/espresso/idling-resource
+
+Step 1: Turn off animations
+
+  If you haven't already, turn off animations.
+
+    1. On your testing device (physical or emulated), go to Settings > Developer options.
+
+    2. Disable these three settings:
+
+      * Window animation scale
+
+      * Transition animation scale
+
+      * Animator duration scale
+
+https://video.udacity-data.com/topher/2020/January/5e31b0fd_11.countingidlingresources1/11.countingidlingresources1.png
+
+Step 2: Create TasksActivityTest
+
+    1. Create a file and class called TasksActivityTest.kt in androidTest:
+https://video.udacity-data.com/topher/2020/January/5e31b0fe_11.countingidlingresources2/11.countingidlingresources2.png
+
+    2. Annotate the class with @RunWith(AndroidJUnit4::class) because you're
+       using AndroidX test code.
+
+    3. Annotate the class with @LargeTest, which signifies these are
+       end-to-end tests, testing a large portion of the code.
+
+    4. Create a property called repository which is a TasksRepository.
+
+    5. Create a @Before method and initialize the repository using the
+       ServiceLocator's provideTasksRepository method; use
+       getApplicationContext to get the application context.
+
+    6. In the @Before method, delete all the tasks in the repository, to ensure
+       it's completely cleared out before each and every test run.
+
+    7. Create an @After method that calls the ServiceLocator's
+       resetRepository() method.
+
+  When you're done, your code should look like:
+
+    TasksActivityTest.kt
+                @RunWith(AndroidJUnit4::class)
+                @LargeTest
+                class TasksActivityTest {
+
+                    private lateinit var repository: TasksRepository
+
+                    @Before
+                    fun init() {
+                        repository = ServiceLocator.provideTasksRepository(getApplicationContext())
+                        runBlocking {
+                            repository.deleteAllTasks()
+                        }
+                    }
+
+                    @After
+                    fun reset() {
+                        ServiceLocator.resetRepository()
+                    }
+                }
+
+What about ActiivtySenarioRule?
+
+  Note that there is an ActivityScenarioRule which calls launch and close for you.
+https://developer.android.com/reference/androidx/test/ext/junit/rules/ActivityScenarioRule
+
+  As mentioned, any setup of the data state, such as adding tasks to the
+  repository, must happen before ActivityScenario.launch() is called.
+  Calling such additional setup code, such as saving tasks to the
+  repository, is not currently supported by ActivityScenarioRule.
+  Therefore, we choose not to use ActivityScenarioRule and instead
+  manually call launch and close.
+
+Step 3: Write an End-to-End Espresso Test
+
+    1. Open TasksActivityTest.
+
+    2. Inside the class, add the following skeleton code:
+
+    TasksActivityTest.kt
+              @Test
+              fun editTask() = runBlocking {
+                  // Set initial state.
+                  repository.saveTask(Task("TITLE1", "DESCRIPTION"))
+
+                  // Start up Tasks screen.
+                  val activityScenario = ActivityScenario.launch(TasksActivity::class.java)
+
+
+                  // Espresso code will go here.
+
+
+                  // Make sure the activity is closed before resetting the db:
+                  activityScenario.close().
+              }
+
+  This is the basic setup for any test involving an Activity. Between when you
+  launch the ActivityScenario and close the ActivityScenario you can now
+  write your Espresso code.
+
+    3. Add the Espresso code as seen below:
+
+    TasksActivityTest.kt
+              @Test
+              fun editTask() = runBlocking {
+
+                  // Set initial state.
+                  repository.saveTask(Task("TITLE1", "DESCRIPTION"))
+
+                  // Start up Tasks screen.
+                  val activityScenario = ActivityScenario.launch(TasksActivity::class.java)
+
+                  // Click on the task on the list and verify that all the data is correct.
+                  onView(withText("TITLE1")).perform(click())
+                  onView(withId(R.id.task_detail_title_text)).check(matches(withText("TITLE1")))
+                  onView(withId(R.id.task_detail_description_text)).check(matches(withText("DESCRIPTION")))
+                  onView(withId(R.id.task_detail_complete_checkbox)).check(matches(not(isChecked())))
+
+                  // Click on the edit button, edit, and save.
+                  onView(withId(R.id.edit_task_fab)).perform(click())
+                  onView(withId(R.id.add_task_title_edit_text)).perform(replaceText("NEW TITLE"))
+                  onView(withId(R.id.add_task_description_edit_text)).perform(replaceText("NEW DESCRIPTION"))
+                  onView(withId(R.id.save_task_fab)).perform(click())
+
+                  // Verify task is displayed on screen in the task list.
+                  onView(withText("NEW TITLE")).check(matches(isDisplayed()))
+                  // Verify previous task is not displayed.
+                  onView(withText("TITLE1")).check(doesNotExist())
+                  // Make sure the activity is closed before resetting the db.
+                  activityScenario.close()
+              }
+
+  Here are the imports if you need them:
+
+    TasksActivityTest.kt
+            import androidx.test.core.app.ActivityScenario
+            import androidx.test.core.app.ApplicationProvider.getApplicationContext
+            import androidx.test.espresso.Espresso.onView
+            import androidx.test.espresso.action.ViewActions.click
+            import androidx.test.espresso.action.ViewActions.replaceText
+            import androidx.test.espresso.assertion.ViewAssertions.doesNotExist
+            import androidx.test.espresso.assertion.ViewAssertions.matches
+            import androidx.test.espresso.matcher.ViewMatchers.*
+            import androidx.test.ext.junit.runners.AndroidJUnit4
+            import androidx.test.filters.LargeTest
+            import com.example.android.architecture.blueprints.todoapp.data.Task
+            import com.example.android.architecture.blueprints.todoapp.data.source.TasksRepository
+            import com.example.android.architecture.blueprints.todoapp.tasks.TasksActivity
+            import kotlinx.coroutines.runBlocking
+            import org.hamcrest.core.IsNot.not
+            import org.junit.After
+            import org.junit.Before
+            import org.junit.Test
+            import org.junit.runner.RunWith
+
+    4. Run this test five times. Notice that the test is flaky, meaning
+       sometimes it will pass, and sometimes it will fail:
+https://video.udacity-data.com/topher/2020/January/5e31b0fe_11.countingidlingresources3/11.countingidlingresources3.png
+https://video.udacity-data.com/topher/2020/January/5e31b0ff_11.countingidlingresources4/11.countingidlingresources4.png
+
+Step 4: Add Idling Resource to your Gradle file
+
+    1. Open your app's build.gradle file and add the Espresso idling resource library:
+
+    app/build.gradle
+                implementation "androidx.test.espresso:espresso-idling-resource:$espressoVersion"
+
+    2. Also add the following option returnDefaultValues = true to testOptions.unitTests.
+
+    app/build.gradle
+                testOptions.unitTests {
+                    includeAndroidResources = true
+                    returnDefaultValues = true
+                }
+
+Step 5: Create an Idling Resource Singleton
+
+  You will add two idling resources. One to deal with data binding
+  synchronization for your views, and another to deal with the long
+  running operation in your repository.
+
+  You'll start with the idling resource related to long running repository operations.
+
+    1. Create a new file called EspressoIdlingResource in app > java > main > util:
+
+https://video.udacity-data.com/topher/2020/January/5e31b0ff_11.countingidlingresources5/11.countingidlingresources5.png
+
+    2. Copy the following code:
+
+    EspressoIdlingResource.kt
+
+            object EspressoIdlingResource {
+
+                private const val RESOURCE = "GLOBAL"
+
+                @JvmField
+                val countingIdlingResource = CountingIdlingResource(RESOURCE)
+
+                fun increment() {
+                    countingIdlingResource.increment()
+                }
+
+                fun decrement() {
+                    if (!countingIdlingResource.isIdleNow) {
+                        countingIdlingResource.decrement()
+                    }
+                }
+            }
+
+Step 6: Create wrapEspressoIdlingResource
+
+    1. In the EspressoIdlingResource file, below the singleton you just
+       created, add the following code for wrapEspressoIdlingResource:
+
+    EspressoIdlingResource.kt
+            inline fun <T> wrapEspressoIdlingResource(function: () -> T): T {
+                // Espresso does not work well with coroutines yet. See
+                // https://github.com/Kotlin/kotlinx.coroutines/issues/982
+                EspressoIdlingResource.increment() // Set app as busy.
+                return try {
+                    function()
+                } finally {
+                    EspressoIdlingResource.decrement() // Set app as idle.
+                }
+            }
+
+Step 7: Use wrapEspressoIdlingResource in DefaultTasksRepository
+
+  Now you should wrap long running operations with wrapEspressoIdlingResource.
+  The majority of these are in your DefaultTasksRepository.
+
+    1. In your application code, open data > source > DefaultTasksRepository.
+
+    2. Wrap all methods in DefaultTasksRepository with wrapEspressoIdlingResource
+
+  Here's an example of wrapping the getTasks method:
+
+    DefaultTasksRepository.kt
+              override suspend fun getTasks(forceUpdate: Boolean): Result<List<Task>> {
+                  wrapEspressoIdlingResource {
+                      if (forceUpdate) {
+                          try {
+                              updateTasksFromRemoteDataSource()
+                          } catch (ex: Exception) {
+                              return Result.Error(ex)
+                          }
+                      }
+                      return tasksLocalDataSource.getTasks()
+                  }
+              }
+
+  The full code for DefaultTasksRepository with all the methods wrapped
+  can be found here.
+https://github.com/udacity/android-testing/blob/end_codelab_3/app/src/main/java/com/example/android/architecture/blueprints/todoapp/data/source/DefaultTasksRepository.kt
+
+  It is unusual to have testing code in your application. To understand more
+  about why and methods of removing idling resource code from your application
+  production code, check out Android testing with Espresso’s Idling Resources
+  and testing fidelity.
+https://medium.com/androiddevelopers/android-testing-with-espressos-idling-resources-and-testing-fidelity-8b8647ed57f4
+
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                  12. Databinding Idiling Resource
+________________________________________________________________________________
