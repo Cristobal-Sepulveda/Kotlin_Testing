@@ -3904,7 +3904,7 @@ ________________________________________________________________________________
   (for example, it wraps returned values with Success or Error states).
   You'll be writing an integration test because you'll test both the
   real TasksLocalDatasource code and the real DAO code.
-
+`TODO 10.20`
 Step 1: Create an integration test for TasksLocalDataSource
 
   The steps for creating tests for your TasksLocalDataSourceTest are
@@ -4139,6 +4139,7 @@ Step 1: Turn off animations
 
 https://video.udacity-data.com/topher/2020/January/5e31b0fd_11.countingidlingresources1/11.countingidlingresources1.png
 
+`TODO 11.1`
 Step 2: Create TasksActivityTest
 
     1. Create a file and class called TasksActivityTest.kt in androidTest:
@@ -4224,6 +4225,7 @@ Step 3: Write an End-to-End Espresso Test
   launch the ActivityScenario and close the ActivityScenario you can now
   write your Espresso code.
 
+`TODO 11.2`
     3. Add the Espresso code as seen below:
 
     TasksActivityTest.kt
@@ -4284,7 +4286,9 @@ Step 3: Write an End-to-End Espresso Test
 https://video.udacity-data.com/topher/2020/January/5e31b0fe_11.countingidlingresources3/11.countingidlingresources3.png
 https://video.udacity-data.com/topher/2020/January/5e31b0ff_11.countingidlingresources4/11.countingidlingresources4.png
 
+`TODO 11.3`
 Step 4: Add Idling Resource to your Gradle file
+
 
     1. Open your app's build.gradle file and add the Espresso idling resource library:
 
@@ -4311,6 +4315,7 @@ Step 5: Create an Idling Resource Singleton
 
 https://video.udacity-data.com/topher/2020/January/5e31b0ff_11.countingidlingresources5/11.countingidlingresources5.png
 
+`TODO 11.4`
     2. Copy the following code:
 
     EspressoIdlingResource.kt
@@ -4335,6 +4340,7 @@ https://video.udacity-data.com/topher/2020/January/5e31b0ff_11.countingidlingres
 
 Step 6: Create wrapEspressoIdlingResource
 
+`TODO 11.5`
     1. In the EspressoIdlingResource file, below the singleton you just
        created, add the following code for wrapEspressoIdlingResource:
 
@@ -4350,6 +4356,7 @@ Step 6: Create wrapEspressoIdlingResource
                 }
             }
 
+`TODO 11.6`
 Step 7: Use wrapEspressoIdlingResource in DefaultTasksRepository
 
   Now you should wrap long running operations with wrapEspressoIdlingResource.
@@ -4391,4 +4398,589 @@ ________________________________________________________________________________
 ________________________________________________________________________________
 
                   12. Databinding Idiling Resource
+________________________________________________________________________________
+
+
+  In this step, you'll add a custom idling resource for data binding.
+  Espresso uses a different mechanism than data binding, the Choreographer
+  class, to synchronize its view updates, so it is not aware of data
+  binding changes.
+
+https://developer.android.com/reference/android/view/Choreographer
+
+`TODO 11.7`
+Step 1: Write DataBindingIdlingResource
+
+    1. Make a new util package in the androidTest source set.
+
+    2. Make a new class DataBindingIdlingResource.kt in androidTest > util:
+
+https://video.udacity-data.com/topher/2020/January/5e31b0ff_12.databindingidlingresource/12.databindingidlingresource.png
+
+    3. Copy the following code into your new class:
+
+    DataBindingIdlingResource.kt
+            class DataBindingIdlingResource : IdlingResource {
+                // List of registered callbacks
+                private val idlingCallbacks = mutableListOf<IdlingResource.ResourceCallback>()
+                // Give it a unique id to work around an Espresso bug where you cannot register/unregister
+                // an idling resource with the same name.
+                private val id = UUID.randomUUID().toString()
+                // Holds whether isIdle was called and the result was false. We track this to avoid calling
+                // onTransitionToIdle callbacks if Espresso never thought we were idle in the first place.
+                private var wasNotIdle = false
+
+                lateinit var activity: FragmentActivity
+
+                override fun getName() = "DataBinding $id"
+
+                override fun isIdleNow(): Boolean {
+                    val idle = !getBindings().any { it.hasPendingBindings() }
+                    @Suppress("LiftReturnOrAssignment")
+                    if (idle) {
+                        if (wasNotIdle) {
+                            // Notify observers to avoid Espresso race detector.
+                            idlingCallbacks.forEach { it.onTransitionToIdle() }
+                        }
+                        wasNotIdle = false
+                    } else {
+                        wasNotIdle = true
+                        // Check next frame.
+                        activity.findViewById<View>(android.R.id.content).postDelayed({
+                            isIdleNow
+                        }, 16)
+                    }
+                    return idle
+                }
+
+                override fun registerIdleTransitionCallback(callback: IdlingResource.ResourceCallback) {
+                    idlingCallbacks.add(callback)
+                }
+
+                /**
+                 * Find all binding classes in all currently available fragments.
+                 */
+                private fun getBindings(): List<ViewDataBinding> {
+                    val fragments = (activity as? FragmentActivity)
+                        ?.supportFragmentManager
+                        ?.fragments
+
+                    val bindings =
+                        fragments?.mapNotNull {
+                            it.view?.getBinding()
+                        } ?: emptyList()
+                    val childrenBindings = fragments?.flatMap { it.childFragmentManager.fragments }
+                        ?.mapNotNull { it.view?.getBinding() } ?: emptyList()
+
+                    return bindings + childrenBindings
+                }
+            }
+
+            private fun View.getBinding(): ViewDataBinding? = DataBindingUtil.getBinding(this)
+
+            /**
+             * Sets the activity from an [ActivityScenario] to be used from [DataBindingIdlingResource].
+             */
+            fun DataBindingIdlingResource.monitorActivity(
+                activityScenario: ActivityScenario<out FragmentActivity>
+            ) {
+                activityScenario.onActivity {
+                    this.activity = it
+                }
+            }
+
+            /**
+             * Sets the fragment from a [FragmentScenario] to be used from [DataBindingIdlingResource].
+             */
+            fun DataBindingIdlingResource.monitorFragment(fragmentScenario: FragmentScenario<out Fragment>) {
+                fragmentScenario.onFragment {
+                    this.activity = it.requireActivity()
+                }
+            }
+
+
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                      13. Using Idling Resources
+________________________________________________________________________________
+
+  In this step, you'll use your two idling resources to make your
+  TasksActivityTest end-to-end tests run deterministically.
+
+Step 1: Use Idling Resources in Tests
+
+    1. Open TasksActivityTest.kt.
+
+    2. Instantiate a private DataBindingIdlingResource:
+
+    TasksActivityTest.kt
+            // An idling resource that waits for Data Binding to have no pending bindings.
+            private val dataBindingIdlingResource = DataBindingIdlingResource()
+
+    3. Create @Before and @After methods that register and unregister the EspressoIdlingResource.countingIdlingResource and dataBindingIdlingResource:
+
+    TasksActivityTest.kt
+            /**
+             * Idling resources tell Espresso that the app is idle or busy. This is needed when operations
+             * are not scheduled in the main Looper (for example when executed on a different thread).
+             */
+            @Before
+            fun registerIdlingResource() {
+                IdlingRegistry.getInstance().register(EspressoIdlingResource.countingIdlingResource)
+                IdlingRegistry.getInstance().register(dataBindingIdlingResource)
+            }
+
+            /**
+             * Unregister your Idling Resource so it can be garbage collected and does not leak any memory.
+             */
+            @After
+            fun unregisterIdlingResource() {
+                IdlingRegistry.getInstance().unregister(EspressoIdlingResource.countingIdlingResource)
+                IdlingRegistry.getInstance().unregister(dataBindingIdlingResource)
+            }
+
+    4. Update the editTask() test so that after you launch the
+       activity scenario, you use monitorActivity to associate
+       the activity with the dataBindingIdlingResource:
+
+    TasksActivityTest.kt
+            @Test
+            fun editTask() = runBlocking {
+                repository.saveTask(Task("TITLE1", "DESCRIPTION"))
+
+                // Start up Tasks screen.
+                val activityScenario = ActivityScenario.launch(TasksActivity::class.java)
+                dataBindingIdlingResource.monitorActivity(activityScenario) // LOOK HERE
+
+                // Rest of test...
+            }
+
+    5. Run your test five times. You should find that the test is no longer flaky.
+
+  The entire TasksActivityTest should look like this:
+
+    TasksActivityTest.kt
+            @RunWith(AndroidJUnit4::class)
+            @LargeTest
+            class TasksActivityTest {
+
+                private lateinit var repository: TasksRepository
+
+                // An idling resource that waits for Data Binding to have no pending bindings.
+                private val dataBindingIdlingResource = DataBindingIdlingResource()
+
+                @Before
+                fun init() {
+                    repository =
+                        ServiceLocator.provideTasksRepository(
+                            getApplicationContext()
+                        )
+                    runBlocking {
+                        repository.deleteAllTasks()
+                    }
+                }
+
+                @After
+                fun reset() {
+                    ServiceLocator.resetRepository()
+                }
+
+                /**
+                 * Idling resources tell Espresso that the app is idle or busy. This is needed when operations
+                 * are not scheduled in the main Looper (for example when executed on a different thread).
+                 */
+                @Before
+                fun registerIdlingResource() {
+                    IdlingRegistry.getInstance().register(EspressoIdlingResource.countingIdlingResource)
+                    IdlingRegistry.getInstance().register(dataBindingIdlingResource)
+                }
+
+                /**
+                 * Unregister your Idling Resource so it can be garbage collected and does not leak any memory.
+                 */
+                @After
+                fun unregisterIdlingResource() {
+                    IdlingRegistry.getInstance().unregister(EspressoIdlingResource.countingIdlingResource)
+                    IdlingRegistry.getInstance().unregister(dataBindingIdlingResource)
+                }
+
+                @Test
+                fun editTask() = runBlocking {
+
+                    // Set initial state.
+                    repository.saveTask(Task("TITLE1", "DESCRIPTION"))
+
+                    // Start up Tasks screen.
+                    val activityScenario = ActivityScenario.launch(TasksActivity::class.java)
+
+                    // Click on the task on the list and verify that all the data is correct.
+                    onView(withText("TITLE1")).perform(click())
+                    onView(withId(R.id.task_detail_title_text)).check(matches(withText("TITLE1")))
+                    onView(withId(R.id.task_detail_description_text)).check(matches(withText("DESCRIPTION")))
+                    onView(withId(R.id.task_detail_complete_checkbox)).check(matches(not(isChecked())))
+
+                    // Click on the edit button, edit, and save.
+                    onView(withId(R.id.edit_task_fab)).perform(click())
+                    onView(withId(R.id.add_task_title_edit_text)).perform(replaceText("NEW TITLE"))
+                    onView(withId(R.id.add_task_description_edit_text)).perform(replaceText("NEW DESCRIPTION"))
+                    onView(withId(R.id.save_task_fab)).perform(click())
+
+                    // Verify task is displayed on screen in the task list.
+                    onView(withText("NEW TITLE")).check(matches(isDisplayed()))
+                    // Verify previous task is not displayed.
+                    onView(withText("TITLE1")).check(doesNotExist())
+                    // Make sure the activity is closed before resetting the db.
+                    activityScenario.close()
+                }
+
+            }
+
+Step 2: Write your own test with idling resources
+
+  Now it's your turn.
+
+    1. Copy over the following code:
+
+    TasksActivityTest.kt
+            @Test
+            fun createOneTask_deleteTask() {
+
+                // 1. Start TasksActivity.
+
+                // 2. Add an active task by clicking on the FAB and saving a new task.
+
+                // 3. Open the new task in a details view.
+
+                // 4. Click delete task in menu.
+
+                // 5. Verify it was deleted.
+
+                // 6. Make sure the activity is closed.
+
+            }
+
+    2. Finish the code, referring to the editTask test you added previously.
+
+    3. Run your test and confirm it passes!
+
+The completed test is here so you can compare.
+https://github.com/udacity/android-testing/blob/end_codelab_3/app/src/androidTest/java/com/example/android/architecture/blueprints/todoapp/TasksActivityTest.kt
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+              14. Code Checkpoint: Testing Global App Navigation
+________________________________________________________________________________
+
+
+  In this step, you'll test app level navigation, including:
+
+    * The navigation drawer
+
+    * The app toolbar
+
+    * The Up button
+
+    * The Back button
+
+Step 1: Create AppNavigationTest
+
+    1. Create a file and class called AppNavigationTest.kt in androidTest:
+
+https://github.com/udacity/android-testing/blob/end_codelab_3/app/src/androidTest/java/com/example/android/architecture/blueprints/todoapp/TasksActivityTest.kt
+
+  Set up your test similarly to how you set up TasksActivityTest.
+
+    2. Add the appropriate annotations for a class that uses AndroidX
+       Test libraries and is an end-to-end test.
+
+    3. Set up your taskRepository.
+
+    4. Register and unregister the correct idling resources.
+
+  When done, AppNavigationTest should look like this:
+
+    AppNavigationTest.kt
+            @RunWith(AndroidJUnit4::class)
+            @LargeTest
+            class AppNavigationTest {
+
+                private lateinit var tasksRepository: TasksRepository
+
+                // An Idling Resource that waits for Data Binding to have no pending bindings.
+                private val dataBindingIdlingResource = DataBindingIdlingResource()
+
+                @Before
+                fun init() {
+                    tasksRepository = ServiceLocator.provideTasksRepository(getApplicationContext())
+                }
+
+                @After
+                fun reset() {
+                    ServiceLocator.resetRepository()
+                }
+
+                /**
+                 * Idling resources tell Espresso that the app is idle or busy. This is needed when operations
+                 * are not scheduled in the main Looper (for example when executed on a different thread).
+                 */
+                @Before
+                fun registerIdlingResource() {
+                    IdlingRegistry.getInstance().register(EspressoIdlingResource.countingIdlingResource)
+                    IdlingRegistry.getInstance().register(dataBindingIdlingResource)
+                }
+
+                /**
+                 * Unregister your idling resource so it can be garbage collected and does not leak any memory.
+                 */
+                @After
+                fun unregisterIdlingResource() {
+                    IdlingRegistry.getInstance().unregister(EspressoIdlingResource.countingIdlingResource)
+                    IdlingRegistry.getInstance().unregister(dataBindingIdlingResource)
+                }
+
+            }
+
+Step 2: Set up your Navigation tests
+
+  The starter code below outlines three tests and describes what
+  they should do. Each test is setup so that it:
+
+    * Configures the repository for the test.
+
+    * Creates an ActivityScenario.
+
+    * Properly sets up your DataBindingIdingResource.
+
+  Add the code now.
+
+    1. Copy this code into the AppNavigationTest class:
+
+    AppNavigationTest.kt
+            @Test
+            fun tasksScreen_clickOnDrawerIcon_OpensNavigation() {
+                // Start the Tasks screen.
+                val activityScenario = ActivityScenario.launch(TasksActivity::class.java)
+                dataBindingIdlingResource.monitorActivity(activityScenario)
+
+                // 1. Check that left drawer is closed at startup.
+
+                // 2. Open drawer by clicking drawer icon.
+
+                // 3. Check if drawer is open.
+
+                // When using ActivityScenario.launch(), always call close()
+                activityScenario.close()
+            }
+
+            @Test
+            fun taskDetailScreen_doubleUpButton() = runBlocking {
+                val task = Task("Up button", "Description")
+                tasksRepository.saveTask(task)
+
+                // Start the Tasks screen.
+                val activityScenario = ActivityScenario.launch(TasksActivity::class.java)
+                dataBindingIdlingResource.monitorActivity(activityScenario)
+
+                // 1. Click on the task on the list.
+
+                // 2. Click on the edit task button.
+
+                // 3. Confirm that if we click Up button once, we end up back at the task details page.
+
+                // 4. Confirm that if we click Up button a second time, we end up back at the home screen.
+
+                // When using ActivityScenario.launch(), always call close().
+                activityScenario.close().
+            }
+
+
+            @Test
+            fun taskDetailScreen_doubleBackButton() = runBlocking {
+                val task = Task("Back button", "Description")
+                tasksRepository.saveTask(task)
+
+                // Start Tasks screen.
+                val activityScenario = ActivityScenario.launch(TasksActivity::class.java)
+                dataBindingIdlingResource.monitorActivity(activityScenario)
+
+                // 1. Click on the task on the list.
+
+                // 2. Click on the Edit task button.
+
+                // 3. Confirm that if we click Back once, we end up back at the task details page.
+
+                // 4. Confirm that if we click Back a second time, we end up back at the home screen.
+
+                // When using ActivityScenario.launch(), always call close()
+                activityScenario.close().
+            }
+
+Step 3: Write your Navigation Tests
+
+    1. Copy the getToolbarNavigationContentDescription extension function
+       and add it to the end of AppNavigationTest.kt (outside of the class):
+
+    AppNavigationTest.kt
+            fun <T : Activity> ActivityScenario<T>.getToolbarNavigationContentDescription()
+                    : String {
+                var description = ""
+                onActivity {
+                    description =
+                        it.findViewById<Toolbar>(R.id.toolbar).navigationContentDescription as String
+                }
+                return description
+            }
+
+  The snippets of code below should help you complete the tests.
+
+  Here's an example of using the getToolbarNavigationContentDescription extension function to click on the navigation button:
+
+Clicking the toolbar navigation button
+
+            onView(
+                withContentDescription(
+                    activityScenario
+                        .getToolbarNavigationContentDescription()
+                )
+            ).perform(click())
+
+  This code checks whether the navigation drawer itself is either open or closed:
+
+Checking that the navigation drawer is open
+
+            onView(withId(R.id.drawer_layout))
+                .check(matches(isOpen(Gravity.START))) // Left drawer is open.
+            onView(withId(R.id.drawer_layout))
+                .check(matches(isClosed(Gravity.START))) // Left Drawer is closed.    
+
+  And here's an example of clicking the system back button:
+
+Clicking the system Back button
+
+            pressBack()
+
+            // You'll need to import androidx.test.espresso.Espresso.pressBack.
+
+  2. Using the examples above and your knowledge of
+     Espresso, finish tasksScreen_clickOnAndroidHomeIcon_OpensNavigation, taskDetailScreen_doubleUpButton(), and taskDetailScreen_doubleBackButton.
+
+  3. Run your tests, and confirm everything works!
+
+  The completed test is in the end_codelab_3 branch of the repository here, so that you can compare.
+
+Optional Step: Download the Final Code (Code Checkpoint)
+  This was the final code step! At this point, if you'd like, you can download the final code here, download a zip of the final code here, OR you can clone the Github repository for the code:
+
+    $ git clone https://github.com/udacity/android-testing.git
+    $ cd android-architecture
+    $ git checkout end_codelab_3
+
+________________________________________________________________________________
+
+
+________________________________________________________________________________
+
+                        15. Testing Lesson Summary
+________________________________________________________________________________
+
+The final code for the entire three codelabs is here.
+https://github.com/udacity/android-testing/tree/end_codelab_3/app
+
+This is a simplified version of the tests found in the Official Testing Sample. If you want to see more tests, or check out more advanced testing techniques (such as using a sharedTest folder), take a look at that sample.
+https://github.com/android/architecture-samples/commits/master
+
+More testing resources
+
+  Samples:
+
+    * Official Testing Sample
+    https://github.com/android/architecture-samples/commits/master
+
+    * Sunflower demo - This is the main Android Jetpack sample which also makes use of the Android testing libraries
+    https://github.com/android/sunflower
+
+    * Espresso testing samples
+    https://github.com/android/testing-samples
+
+  Android developer documentation:
+
+    * Guide to app architecture
+    https://developer.android.com/jetpack/guide
+    * AndroidX Test Library
+    https://developer.android.com/training/testing/set-up-project
+    * AndroidX Architecture Components Core Test Library
+https://developer.android.com/reference/android/arch/core/executor/testing/package-summary
+    * Hamcrest
+http://hamcrest.org/
+    * Robolectric Testing library
+http://robolectric.org/
+    * Source sets
+https://developer.android.com/studio/build#sourcesets
+    * Test from the command line
+https://developer.android.com/studio/test/command-line
+    * Dependency Injection on Android
+https://developer.android.com/training/dependency-injection
+    * Mockito
+https://site.mockito.org/
+    * FragmentScenario
+https://developer.android.com/reference/androidx/fragment/app/testing/FragmentScenario
+    * Test your activities
+https://developer.android.com/guide/components/activities/testing
+    * runBlocking and runBlockingTest
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/run-blocking.html
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-test/kotlinx.coroutines.test/run-blocking-test.html
+    * TestCoroutineDispatcher
+https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-test/kotlinx.coroutines.test/-test-coroutine-dispatcher/
+    * Espresso
+https://developer.android.com/training/testing/espresso
+    * Mockito
+https://site.mockito.org/
+    * JUnit4
+https://junit.org/junit4/
+    * Test Navigation
+https://developer.android.com/guide/navigation/navigation-testing
+    * Testing your workers - a guide to testing WorkManager
+https://developer.android.com/topic/libraries/architecture/workmanager/how-to/integration-testing
+    * Firebase Test Lab - cloud testing infrastructure
+https://firebase.google.com/docs/test-lab
+
+  Videos:
+
+    * Build Testable Apps for Android (Google I/O'19)
+https://www.youtube.com/watch?v=VJi2vmaQe6w&ab_channel=AndroidDevelopers
+    * Testing Coroutines on Android (Android Dev Summit '19)
+https://www.youtube.com/watch?v=KMb0Fs8rCRs&list=PLWz5rJ2EKKc_xXXubDti2eRnIKU0p7wHd&index=59&t=799s&ab_channel=AndroidDevelopers
+    * Fragments: Past, Present, and Future (Android Dev Summit '19) - Testing and Fragments section
+https://www.youtube.com/watch?v=RS1IACnZLy4&list=PLWz5rJ2EKKc_xXXubDti2eRnIKU0p7wHd&t=227s&ab_channel=AndroidDevelopers
+    * An Opinionated Guide to Dependency Injection on Android (Android Dev Summit '19)
+https://www.youtube.com/watch?v=o-ins1nvbDg&list=PLWz5rJ2EKKc_xXXubDti2eRnIKU0p7wHd&index=42&ab_channel=AndroidDevelopers
+
+  Other:
+
+    * Unit-testing LiveData and other common observability problems
+https://medium.com/androiddevelopers/unit-testing-livedata-and-other-common-observability-problems-bb477262eb04
+    * Testing on the Toilet: Know Your Test Doubles
+https://testing.googleblog.com/2013/07/testing-on-toilet-know-your-test-doubles.html
+    * Using Dagger in your Android App Codelab Tutorial
+https://developer.android.com/codelabs/android-dagger?index=..%2F..index#0
+    * Dependency Injection Guidance on Android — ADS 2019
+https://medium.com/androiddevelopers/dependency-injection-guidance-on-android-ads-2019-b0b56d774bc2
+    * Dagger in Kotlin: Gotchas and Optimizations
+https://medium.com/androiddevelopers/dagger-in-kotlin-gotchas-and-optimizations-7446d8dfd7dc
+    * Dagger.dev
+https://dagger.dev/
+    * Easy Coroutines in Android: viewModelScope
+https://medium.com/androiddevelopers/easy-coroutines-in-android-viewmodelscope-25bffb605471
+    * Testing two consecutive LiveData emissions in Coroutines
+https://medium.com/androiddevelopers/testing-two-consecutive-livedata-emissions-in-coroutines-5680b693cbf8
+    * Android testing with Espresso’s Idling Resources and testing fidelity
+https://medium.com/androiddevelopers/android-testing-with-espressos-idling-resources-and-testing-fidelity-8b8647ed57f4
+    * Test Room migrations
+https://medium.com/androiddevelopers/testing-room-migrations-be93cdb0d975
+
 ________________________________________________________________________________

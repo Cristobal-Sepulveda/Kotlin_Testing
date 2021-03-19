@@ -43,10 +43,10 @@ android {
     }
     //TODO 2.9
     // Always show the result of every unit test when running via command line, even if it passes.
-    testOptions {
-        unitTests {
-            includeAndroidResources = true
-        }
+    testOptions.unitTests {
+        includeAndroidResources = true
+        //TODO 11.3
+        returnDefaultValues = true
     }
 }
 
@@ -124,5 +124,6 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:$espressoVersion"
     androidTestImplementation "androidx.test.espresso:espresso-contrib:$espressoVersion"
 
-
+    //TODO 11.3
+    implementation "androidx.test.espresso:espresso-idling-resource:$espressoVersion"
 }
